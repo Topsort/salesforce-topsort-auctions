@@ -16,6 +16,7 @@ server.append('Show', function (req, res, next) {
     const productIDs      = originalEntries.map(e => e.productID);
     const searchQuery     = req.querystring.q || '';
     const slots           = productIDs.length;
+    const categoryId      = req.querystring.cgid || '';
 
     const Cookie = require('dw/web/Cookie');
     const UUIDUtils = require('dw/util/UUIDUtils');
@@ -43,10 +44,16 @@ server.append('Show', function (req, res, next) {
                 type:        'listings',
                 slots:       slots,
                 products:    { ids: productIDs },
-                searchQuery: searchQuery
             }
         ]
     };
+
+    if (searchQuery) {
+        auctionRequest.auctions[0].searchQuery = searchQuery;
+    }
+    if (categoryId) {
+        auctionRequest.auctions[0].category = {id: categoryId};
+    }
 
     const client = new HTTPClient();
     let winners = [];
@@ -55,7 +62,6 @@ server.append('Show', function (req, res, next) {
         client.open('POST', apiUrl);
         client.setTimeout(5000);
         client.setRequestHeader('Content-Type', 'application/json');
-        // pull your API key from a custom preference
         const apiKey = Site.getCurrent().getCustomPreferenceValue('topsortApiKey');
         if (apiKey) {
             client.setRequestHeader('Authorization', 'Bearer ' + apiKey);
