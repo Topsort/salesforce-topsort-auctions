@@ -40,6 +40,7 @@ This cartridge integrates Topsort’s auction-based sponsored product placement 
    * In Business Manager: **Administration** > **Sites** > **Manage Sites** > select your site > **Merchant Tools** > **Custom Preferences** > **topsortSponsoredPreferences**.
    * Create or update:
 
+     * `topsortApiURL` — Topsort API URL, (e.g. https://api.topsort.com).
      * `topsortApiKey` — Your Topsort bearer token.
      * `topsortCookieMaxAge` — Cookie expiration in seconds (default `86400`).
 

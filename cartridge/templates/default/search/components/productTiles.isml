@@ -5,74 +5,20 @@
     data-product-type="${product.productSearchHit.hitType}"
   >
     <isif condition="${product.isSponsored === true}">
-      <div class="sponsored-badge">Ad</div>
+      <div class="featured-item-label">Featured</div>
 
       <script>
-        (function(){
-          const payload = {
-            impressions: [{
-              id: crypto.randomUUID(),
-              occurredAt: new Date().toISOString(),
-              opaqueUserId: '${pdict.tsuid}',
-              placement: {
-                path: window.location.pathname,
-                position: ${loopStatus.index + 1},
-                page: ${pdict.productSearch.page},
-                pageSize: ${pdict.productSearch.hitsPerPage},
-                categoryId: '${pdict.request.querystring.cgid}'
-              },
-              resolvedBidId: '${product.resolvedBidId}',
-              deviceType: navigator.userAgent.match(/Mobi/) ? 'mobile' : 'desktop',
-              channel: 'onsite'
-            }]
-          };
-
-          fetch('https://api.topsort.com/v2/events', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ${pdict.topsortApiKey}'
-            },
-            body: JSON.stringify(payload)
-          })
-
-        })();
-      </script>
-
-      <script>
-        (function(){
-          const el = document.getElementById('tile-${product.productID}');
-          if (!el) return;
-          el.addEventListener('click', function(){
-            const clickPayload = {
-              clicks: [{
-                id: crypto.randomUUID(),
-                occurredAt: new Date().toISOString(),
-                opaqueUserId: '${pdict.tsuid}',
-                placement: {
-                  path: window.location.pathname,
-                  position: ${loopStatus.index + 1},
-                  page: ${pdict.productSearch.page},
-                  pageSize: ${pdict.productSearch.hitsPerPage},
-                  categoryId: '${pdict.request.querystring.cgid}'
-                },
-                resolvedBidId: '${product.resolvedBidId}',
-                deviceType: navigator.userAgent.match(/Mobi/) ? 'mobile' : 'desktop',
-                channel: 'offsite'
-              }]
-            };
-
-            fetch('https://api.topsort.com/v2/events', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ${pdict.topsortApiKey}'
-              },
-              body: JSON.stringify(clickPayload),
-              keepalive: true
-            })
+        if (window.ProductEngagement) {
+          ProductEngagement.setupItemTracking({
+            productId: '${product.productID}',
+            userId: '${pdict.tsuid || ""}',
+            position: ${loopStatus.index + 1},
+            page: ${pdict.productSearch.page || 1},
+            pageSize: ${pdict.productSearch.hitsPerPage || 12},
+            categoryId: '${pdict.request.querystring.cgid || ""}',
+            resolvedBidId: '${product.resolvedBidId || ""}'
           });
-        })();
+        }
       </script>
     </isif>
 

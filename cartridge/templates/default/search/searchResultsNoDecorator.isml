@@ -9,7 +9,39 @@
 <isset name="desktopViewMode" value="${pdict.desktopViewMode ? pdict.desktopViewMode : 'grid'}" scope="page" />
 <isset name="mobileViewMode" value="${pdict.mobileViewMode ? pdict.mobileViewMode : 'list'}" scope="page" />
 
-<img src="${pdict.bannerUrl}" alt="Top Banner" style="width: 100%;" />
+<script src="${URLUtils.staticURL('/js/product-engagement.js')}"></script>
+<script>
+  if (window.ProductEngagement && ${pdict.topsortTrackingEnabled}) {
+    ProductEngagement.init({
+      apiURL: '${pdict.topsortApiURL}',
+      apiKey: '${pdict.topsortApiKey}',
+      trackingEnabled: ${pdict.topsortTrackingEnabled}
+    });
+  }
+</script>
+
+<isif condition="${pdict.featuredContentUrl}">
+    <div id="featured-content" class="featured-content-container">
+        <a href="${pdict.featuredContentUrl}" target="_blank" rel="noopener">
+            <img src="${pdict.featuredContentUrl}" alt="Featured Content" style="width: 100%;" />
+        </a>
+    </div>
+
+    <isif condition="${pdict.featuredContentBidId}">
+        <script>
+        if (window.ProductEngagement) {
+          ProductEngagement.setupContentTracking({
+            userId: '${pdict.tsuid || ""}',
+            position: 1,
+            page: ${pdict.productSearch.page || 1},
+            pageSize: ${pdict.productSearch.hitsPerPage || 12},
+            categoryId: '${pdict.request.querystring.cgid || ""}',
+            resolvedBidId: '${pdict.featuredContentBidId || ""}'
+          });
+        }
+        </script>
+    </isif>
+</isif>
 
 <isif condition="${activeResults}">
     <isinclude template="components/breadcrumbs/pageSearchBreadcrumbs"/>
