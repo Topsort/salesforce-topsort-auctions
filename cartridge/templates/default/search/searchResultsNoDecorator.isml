@@ -9,7 +9,85 @@
 <isset name="desktopViewMode" value="${pdict.desktopViewMode ? pdict.desktopViewMode : 'grid'}" scope="page" />
 <isset name="mobileViewMode" value="${pdict.mobileViewMode ? pdict.mobileViewMode : 'list'}" scope="page" />
 
-<img src="${pdict.bannerUrl}" alt="Top Banner" style="width: 100%;" />
+<isif condition="${pdict.bannerUrl}">
+    <div id="topsort-banner" class="topsort-banner-container">
+        <a href="${pdict.bannerUrl}" target="_blank" rel="noopener">
+            <img src="${pdict.bannerUrl}" alt="Banner" style="width: 100%;" />
+        </a>
+    </div>
+
+    <isif condition="${pdict.bannerResolvedBidId}">
+        <script>
+        (function() {
+            // Banner impression tracking
+            const impressionPayload = {
+                impressions: [{
+                    id: crypto.randomUUID(),
+                    occurredAt: new Date().toISOString(),
+                    opaqueUserId: '${pdict.tsuid || ""}',
+                    placement: {
+                        path: window.location.pathname,
+                        position: 1,
+                        page: ${pdict.productSearch.page || 1},
+                        pageSize: ${pdict.productSearch.hitsPerPage || 12},
+                        categoryId: '${pdict.request.querystring.cgid || ""}'
+                    },
+                    resolvedBidId: '${pdict.bannerResolvedBidId}',
+                    deviceType: navigator.userAgent.match(/Mobi/) ? 'mobile' : 'desktop',
+                    channel: 'onsite'
+                }]
+            };
+
+            fetch('https://api.topsort.com/v2/events', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ${pdict.topsortApiKey}'
+                },
+                body: JSON.stringify(impressionPayload)
+            }).catch(function(error) {
+                console.error('Topsort banner impression tracking failed:', error);
+            });
+
+            // Banner click tracking
+            const bannerElement = document.getElementById('topsort-banner');
+            if (bannerElement) {
+                bannerElement.addEventListener('click', function(e) {
+                    const clickPayload = {
+                        clicks: [{
+                            id: crypto.randomUUID(),
+                            occurredAt: new Date().toISOString(),
+                            opaqueUserId: '${pdict.tsuid || ""}',
+                            placement: {
+                                path: window.location.pathname,
+                                position: 1,
+                                page: ${pdict.productSearch.page || 1},
+                                pageSize: ${pdict.productSearch.hitsPerPage || 12},
+                                categoryId: '${pdict.request.querystring.cgid || ""}'
+                            },
+                            resolvedBidId: '${pdict.bannerResolvedBidId}',
+                            deviceType: navigator.userAgent.match(/Mobi/) ? 'mobile' : 'desktop',
+                            channel: 'onsite'
+                        }]
+                    };
+
+                    fetch('https://api.topsort.com/v2/events', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ${pdict.topsortApiKey}'
+                        },
+                        body: JSON.stringify(clickPayload),
+                        keepalive: true
+                    }).catch(function(error) {
+                        console.error('Topsort banner click tracking failed:', error);
+                    });
+                });
+            }
+        })();
+        </script>
+    </isif>
+</isif>
 
 <isif condition="${activeResults}">
     <isinclude template="components/breadcrumbs/pageSearchBreadcrumbs"/>

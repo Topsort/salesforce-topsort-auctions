@@ -144,12 +144,17 @@ server.append('Show', function (req, res, next) {
     });
 
     const banners = resp.results.filter(w => w.resultType === 'banners');
-    const bannerWinners = banners[0]["winners"]
+    const bannerWinners = banners[0] && banners[0]["winners"] ? banners[0]["winners"] : [];
 
-    
-    viewData.bannerUrl = bannerWinners.length > 0 ? bannerWinners[0]["asset"][0]["url"] : null;
+    if (bannerWinners.length > 0) {
+        viewData.bannerUrl = bannerWinners[0]["asset"][0]["url"];
+        viewData.bannerResolvedBidId = bannerWinners[0]["resolvedBidId"];
+    } else {
+        viewData.bannerUrl = null;
+        viewData.bannerResolvedBidId = null;
+    }
     viewData.productSearch.productIds = reordered;
-    viewData.topsortApiKey = apiKey;
+    viewData.topsortApiKey = Site.current.getCustomPreferenceValue('topsortApiKey');
     viewData.tsuid = tsuidValue;
     res.setViewData(viewData);
     next();
