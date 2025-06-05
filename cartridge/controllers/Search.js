@@ -6,6 +6,7 @@ const HTTPClient  = require('dw/net/HTTPClient');
 const ProductMgr  = require('dw/catalog/ProductMgr');
 const Site        = require('dw/system/Site');
 const Logger      = require('dw/system/Logger').getLogger('SponsoredSearch');
+const topsortConfig  = require('*/cartridge/scripts/config/topsort_banners.json');
 
 server.extend(superSearch);
 
@@ -38,22 +39,41 @@ server.append('Show', function (req, res, next) {
 
     response.addHttpCookie(searchCookie);
 
-    const auctionRequest = {
-        auctions: [
-            {
-                type:        'listings',
-                slots:       slots,
-                products:    { ids: productIDs },
-            }
-        ]
-    };
+    const listingsAuction = {
+        type: 'listings',
+        slots: slots,
+        products: { ids: productIDs },
+    }
 
     if (searchQuery) {
-        auctionRequest.auctions[0].searchQuery = searchQuery;
+        listingsAuction.searchQuery = searchQuery;
     }
     if (categoryId) {
-        auctionRequest.auctions[0].category = {id: categoryId};
+        listingsAuction.category = {id: categoryId};
     }
+    const auctions = topsortConfig.map(config => {
+        const auction = {
+            type: 'banners',
+            slots: config.slots,
+            slotId: config.slotId
+        };
+        
+        if (config.type === 'search') {
+            auction.searchQuery = searchQuery;
+        }
+
+        if (config.type === 'category') {
+            auction.category = {id: categoryId};
+        }
+        
+        return auction;
+    });
+    
+    auctions.unshift(listingsAuction);
+
+    const auctionRequest = {
+        auctions: auctions
+    };
 
     const client = new HTTPClient();
     let winners = [];
@@ -70,8 +90,18 @@ server.append('Show', function (req, res, next) {
 
             
         const resp = JSON.parse(client.getText());
-        const result = resp.results && resp.results[0];
+        const results = resp.results
+        const result = resp.results[0]
+        const listingsResult = resp.results.filter(r => r["resultType"] === "listings")[0]
+        const bannerResults = resp.results.filter(r => r["resultType"] === "banners")
 
+        topsortConfig.forEach(config => {
+            const bannerResult = bannerResults.find(r => r["slotId"] === config.slotId)
+            if (bannerResult) {
+                config.winnerUrl = bannerResult.url
+                config.resolvedBidId = bannerResult.resolvedBidId
+            }
+        })
 
         if (result && Array.isArray(result.winners)) {
             winners = result.winners;
@@ -97,7 +127,6 @@ server.append('Show', function (req, res, next) {
             entry.resolvedBidId = bidId;
             reordered.push(entry);
         } else {
-            // wasn’t in organics → inject minimal
             reordered.push({
                 productID:    id,
                 isSponsored:  true,
@@ -114,7 +143,11 @@ server.append('Show', function (req, res, next) {
         }
     });
 
+    const banners = resp.results.filter(w => w.resultType === 'banners');
+    const bannerWinners = banners[0]["winners"]
 
+    
+    viewData.bannerUrl = bannerWinners.length > 0 ? bannerWinners[0]["asset"][0]["url"] : null;
     viewData.productSearch.productIds = reordered;
     viewData.topsortApiKey = apiKey;
     viewData.tsuid = tsuidValue;
