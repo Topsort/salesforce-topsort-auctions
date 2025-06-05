@@ -27,7 +27,7 @@
             }]
           };
 
-          fetch('https://api.topsort.com/v2/events', {
+          fetch('${pdict.topsortApiURL}/v2/events', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -62,7 +62,7 @@
               }]
             };
 
-            fetch('https://api.topsort.com/v2/events', {
+            fetch('${pdict.topsortApiURL}/v2/events', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

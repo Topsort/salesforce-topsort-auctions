@@ -78,7 +78,8 @@ server.append('Show', function (req, res, next) {
     const client = new HTTPClient();
     let winners = [];
     try {
-        const apiUrl = 'https://api.topsort.com/v2/auctions';
+        const apiBaseUrl = Site.current.getCustomPreferenceValue('topsortApiURL') || 'https://api.topsort.com';
+        const apiUrl = apiBaseUrl + '/v2/auctions';
         client.open('POST', apiUrl);
         client.setTimeout(5000);
         client.setRequestHeader('Content-Type', 'application/json');
@@ -155,6 +156,7 @@ server.append('Show', function (req, res, next) {
     }
     viewData.productSearch.productIds = reordered;
     viewData.topsortApiKey = Site.current.getCustomPreferenceValue('topsortApiKey');
+    viewData.topsortApiURL = Site.current.getCustomPreferenceValue('topsortApiURL') || 'https://api.topsort.com';
     viewData.tsuid = tsuidValue;
     res.setViewData(viewData);
     next();

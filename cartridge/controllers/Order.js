@@ -31,7 +31,8 @@ server.append(
             const client = new HTTPClient();
             client.setTimeout(5000);
 
-            const eventUrl = 'https://api.topsort.com/v1/events';
+            const apiBaseUrl = Site.getCurrent().getCustomPreferenceValue('topsortApiURL') || 'https://api.topsort.com';
+            const eventUrl = apiBaseUrl + '/v1/events';
             const apiKey   = Site.getCurrent().getCustomPreferenceValue('topsortApiKey');
 
             client.open('POST', eventUrl);
