@@ -27,55 +27,14 @@ server.append(
         const tsuidCookie = req.httpCookies['tsuid'];
         const opaqueUserId = tsuidCookie ? tsuidCookie.value : null;
 
-        try {
-            const client = new HTTPClient();
-            client.setTimeout(5000);
+        const TopsortService = require('*/cartridge/scripts/services/TopsortService');
+        const response = TopsortService.sendPurchaseEvent(theOrder, opaqueUserId);
 
-            const apiBaseUrl = Site.getCurrent().getCustomPreferenceValue('topsortApiURL') || 'https://api.topsort.com';
-            const eventUrl = apiBaseUrl + '/v1/events';
-            const apiKey   = Site.getCurrent().getCustomPreferenceValue('topsortApiKey');
-
-            client.open('POST', eventUrl);
-
-            if (apiKey) {
-                client.setRequestHeader('Authorization', 'Bearer ' + apiKey);
-            }
-            client.setRequestHeader('Content-Type', 'application/json');
-
-            const payload = {
-                orderNo:       theOrder.orderNo,
-                total:         theOrder.totalGrossPrice.value,
-                currency:      theOrder.currencyCode,
-                createdAt:     new Date().toISOString(),
-                opaqueUserId:  opaqueUserId,
-                items:         []
-            };
-
-            const pliIter = theOrder.allProductLineItems.iterator();
-            while (pliIter.hasNext()) {
-                const pli = pliIter.next();
-                payload.items.push({
-                    productId: pli.productID,
-                    quantity:  pli.quantityValue,
-                    price:     pli.adjustedPrice.value
-                });
-            }
-
-            client.send(JSON.stringify(payload));
-
-            if (client.statusCode !== 200 && client.statusCode !== 201) {
-                Logger.error(
-                    'Topsort event POST failed for order {0}: status {1}, response {2}',
-                    theOrder.orderNo,
-                    client.statusCode,
-                    client.text
-                );
-            }
-        } catch (e) {
+        if (!response.success) {
             Logger.error(
-                'Exception sending Topsort event for order {0}: {1}',
+                'Topsort purchase event failed for order {0}: {1}',
                 theOrder.orderNo,
-                e.message
+                response.error
             );
         }
 
