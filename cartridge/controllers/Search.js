@@ -59,7 +59,11 @@ server.append('Show', function (req, res, next) {
         };
         
         if (config.type === 'search') {
-            auction.search = searchQuery;
+            auction.searchQuery = searchQuery;
+        }
+
+        if (config.type === 'category') {
+            auction.category = {id: categoryId};
         }
         
         return auction;
@@ -86,6 +90,7 @@ server.append('Show', function (req, res, next) {
 
             
         const resp = JSON.parse(client.getText());
+        const results = resp.results
         const result = resp.results[0]
         const listingsResult = resp.results.filter(r => r["resultType"] === "listings")[0]
         const bannerResults = resp.results.filter(r => r["resultType"] === "banners")
@@ -138,9 +143,11 @@ server.append('Show', function (req, res, next) {
         }
     });
 
-    const bannerWinnerIds = winners.filter(w => w.type === 'banners').map(w => w.id);
+    const banners = resp.results.filter(w => w.resultType === 'banners');
+    const bannerWinners = banners[0]["winners"]
 
-    viewData.bannerUrl = topsortConfig.find(config => config.slotId === 'banner-top-search').url;
+    
+    viewData.bannerUrl = bannerWinners.length > 0 ? bannerWinners[0]["asset"][0]["url"] : null;
     viewData.productSearch.productIds = reordered;
     viewData.topsortApiKey = apiKey;
     viewData.tsuid = tsuidValue;
