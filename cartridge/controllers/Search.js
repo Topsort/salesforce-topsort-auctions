@@ -43,6 +43,7 @@ server.append('Show', function (req, res, next) {
         type: 'listings',
         slots: slots,
         products: { ids: productIDs },
+        opaqueUserId: tsuidValue
     }
 
     if (searchQuery) {
@@ -55,7 +56,8 @@ server.append('Show', function (req, res, next) {
         const auction = {
             type: 'banners',
             slots: config.slots,
-            slotId: config.slotId
+            slotId: config.slotId,
+            opaqueUserId: tsuidValue
         };
 
         if (config.type === 'search') {

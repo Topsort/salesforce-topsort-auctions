@@ -43,6 +43,7 @@ const TopsortService = {
             client.open(opts.method, url);
             client.setTimeout(opts.timeout);
             client.setRequestHeader('Content-Type', 'application/json');
+            client.setRequestHeader('User-Agent', 'TopsortSFCC@1.0.0');
 
             if (config.apiKey) {
                 client.setRequestHeader('Authorization', 'Bearer ' + config.apiKey);
