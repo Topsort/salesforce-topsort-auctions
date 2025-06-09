@@ -1,6 +1,21 @@
 ## **Topsort Sponsored Search Cartridge**
 
-This cartridge integrates Topsort’s auction-based sponsored product placement into Salesforce B2C Commerce (SFCC) search results, including both product listings and promotional banners.
+This cartridge integrates Topsort's auction-based sponsored product placement into Salesforce B2C Commerce (SFCC) search results, including both product listings and promotional banners.
+
+### Supported Features
+
+This cartridge adds support for the following:
+
+1. Sponsored products with custom sponsored flag and event tracking
+2. One banner on search pages for categories and search with custom placement and event tracking
+
+### Upcoming Updates
+
+Future versions will include:
+- Support for multiple banners
+- Additional preferences for customizing:
+  - Sponsored product placement
+  - Number of sponsored products via custom preference
 
 ---
 
