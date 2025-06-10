@@ -9,7 +9,7 @@ const csrfProtection  = require('*/cartridge/scripts/middleware/csrf');
 const consentTracking = require('*/cartridge/scripts/middleware/consentTracking');
 const pageMetaData    = require('*/cartridge/scripts/middleware/pageMetaData');
 
-server.extend(require('app_storefront_base/cartridge/controllers/Order'));
+server.extend(module.superModule);
 
 server.append(
     'Confirm',
@@ -24,19 +24,19 @@ server.append(
             return next();
         }
 
-        const tsuidCookie = req.httpCookies['tsuid'];
-        const opaqueUserId = tsuidCookie ? tsuidCookie.value : null;
+        let tsuid = request.httpCookies['tsuid'];
+        if (!tsuid) {
+            tsuid = new Cookie('tsuid', UUIDUtils.createUUID());
+            tsuid.setMaxAge(365 * 24 * 60 * 60);
+            tsuid.setHttpOnly(true);
+            tsuid.setPath('/');
+            response.addHttpCookie(tsuid);
+        }
+
+        const opaqueUserId = tsuid.value;
 
         const TopsortService = require('*/cartridge/scripts/services/TopsortService');
-        const response = TopsortService.sendPurchaseEvent(theOrder, opaqueUserId);
-
-        if (!response.success) {
-            Logger.error(
-                'Topsort purchase event failed for order {0}: {1}',
-                theOrder.orderNo,
-                response.error
-            );
-        }
+        const topsortResponse = TopsortService.sendPurchaseEvent(theOrder, opaqueUserId);
 
         return next();
     }
