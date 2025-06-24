@@ -15,9 +15,9 @@ server.append('Show', function (req, res, next) {
     const viewData        = res.getViewData();
     const originalEntries = viewData.productSearch.productIds || [];
     const productIDs      = originalEntries.map(e => e.productID);
-    const searchQuery     = req.querystring.q || '';
+    const searchQuery     = req.querystring.q;
     const slots           = 6;
-    const categoryId      = req.querystring.cgid || '';
+    const categoryId      = req.querystring.cgid;
 
     const Cookie    = require('dw/web/Cookie');
     const UUIDUtils = require('dw/util/UUIDUtils');
