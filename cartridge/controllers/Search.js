@@ -38,6 +38,8 @@ server.append('Show', function (req, res, next) {
     searchCookie.setPath('/');
     response.addHttpCookie(searchCookie);
 
+    const sluggedCategoryId = categoryId ? categoryId.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : null;
+
     const listingsAuction = {
         type: 'listings',
         slots: slots,
@@ -45,9 +47,12 @@ server.append('Show', function (req, res, next) {
         opaqueUserId: tsuidValue
     };
     if (searchQuery)  listingsAuction.searchQuery = searchQuery;
-    if (categoryId)   listingsAuction.category    = { id: categoryId };
+    if (categoryId && sluggedCategoryId)   listingsAuction.category    = { id: sluggedCategoryId };
 
     const auctions = topsortConfig.map(config => {
+        if (config.type === 'category' && !categoryId) return null;
+        if (config.type === 'search' && !searchQuery) return null;
+
         const auction = {
             type: 'banners',
             slots: config.slots,
@@ -55,9 +60,10 @@ server.append('Show', function (req, res, next) {
             opaqueUserId: tsuidValue
         };
         if (config.type === 'search')   auction.searchQuery = searchQuery;
-        if (config.type === 'category') auction.category    = { id: categoryId };
+        if (config.type === 'category' && sluggedCategoryId) auction.category    = { id: sluggedCategoryId };
         return auction;
-    });
+    }).filter(Boolean);
+
     auctions.unshift(listingsAuction);
 
     const TopsortService   = require('*/cartridge/scripts/services/TopsortService');
