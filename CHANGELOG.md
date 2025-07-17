@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.1 (17 Jul, 2025)
+* Added guard to disable sponsored products when non-category facets/refinements are applied to search results
+
 ## 1.0.0 (9 Jun, 2025)
 
 * Initial release of Topsort Sponsored Search Cartridge
