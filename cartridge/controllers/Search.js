@@ -19,6 +19,22 @@ server.append('Show', function (req, res, next) {
     const slots           = 6;
     const categoryId      = req.querystring.cgid;
 
+
+    // ——— UPDATED GUARD ———
+    // Disable sponsored only if the user has selected ANY non‐category refinement
+    const filtersApplied = (viewData.productSearch.refinements || []).some(refGroup => {
+        if (refGroup.isCategoryRefinement) {
+            return false;
+        }
+        return (refGroup.values || []).some(val => val.selected);
+    });
+    if (filtersApplied) {
+        res.setViewData(viewData);
+        return next();
+    }
+    // ——— end guard ———
+
+
     const Cookie    = require('dw/web/Cookie');
     const UUIDUtils = require('dw/util/UUIDUtils');
 
