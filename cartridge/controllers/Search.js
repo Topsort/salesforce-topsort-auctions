@@ -125,6 +125,24 @@ server.append('Show', function (req, res, next) {
     // HERE: logic to place the winners in the correct positions
     // modify this to place the winners in custom positions
 
+    const productIdsLength = productIDs.length;
+    if (productIdsLength > 39) {
+        const winnersLength    = sponsoredTop.length;
+        const productsToRemove = winnersLength % 4;
+        const productIds       = viewData.productSearch.productIds;
+    
+        if (productsToRemove > 0) {
+            for (let i = 0; i < productsToRemove; i++) {
+                const tailSize   = 6;
+                const startIndex = Math.max(productIds.length - tailSize, 0);
+                const range      = productIds.length - startIndex;
+                const randomIdx  = startIndex + Math.floor(Math.random() * range);
+                productIds.splice(randomIdx, 1);
+            }
+            viewData.productSearch.productIds = productIds;
+        }
+    }
+
     // Place first 2 winners at positions 0,1
     const firstTwoWinners = sponsoredTop.slice(0, 2);
     const withFirst = firstTwoWinners
