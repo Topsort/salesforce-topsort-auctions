@@ -1,102 +1,141 @@
-'use strict';
+"use strict";
 
-const server         = require('server');
-const superSearch    = module.superModule;
-const HTTPClient     = require('dw/net/HTTPClient');
-const ProductMgr     = require('dw/catalog/ProductMgr');
-const Site           = require('dw/system/Site');
-const Logger         = require('dw/system/Logger').getLogger('SponsoredSearch');
-const topsortConfig  = require('*/cartridge/scripts/config/topsort_banners.json');
+var server         = require("server");
+var superSearch    = module.superModule;
+var Logger         = require("dw/system/Logger").getLogger("SponsoredSearch");
+var topsortHelpers = require("*/cartridge/scripts/helpers/topsortHelpers");
+var TopsortService = require("*/cartridge/scripts/services/TopsortService");
+var ProductMgr     = require("dw/catalog/ProductMgr");
+var collections    = require("*/cartridge/scripts/util/collections");
+var ArrayList      = require("dw/util/ArrayList");
+var topsortConfig  = new ArrayList(require("*/cartridge/scripts/config/topsort_banners.json"));
 
 server.extend(superSearch);
 
-// biome-ignore lint/complexity/useArrowFunction: <explanation>
-server.append('Show', function (req, res, next) {
-    const viewData        = res.getViewData();
-    const originalEntries = viewData.productSearch.productIds || [];
-    const productIDs      = originalEntries.map(e => e.productID);
-    const searchQuery     = req.querystring.q;
-    const slots           = 6;
-    const categoryId      = req.querystring.cgid;
-
-
-    // ——— UPDATED GUARD ———
-    // Disable sponsored only if the user has selected ANY non‐category refinement
-    const filtersApplied = (viewData.productSearch.refinements || []).some(refGroup => {
-        if (refGroup.isCategoryRefinement) {
-            return false;
-        }
-        return (refGroup.values || []).some(val => val.selected);
+/**
+ * Appends auction results to the search results and manages cookies for user tracking.
+ *
+ * This function modifies the search results by integrating auction data, handling cookies
+ * for user identification, and updating the view data with sponsored product information.
+ *
+ * @param {Object} req - The request object containing query parameters.
+ * @param {Object} res - The response object used to modify view data.
+ * @param {Function} next - The next middleware function in the chain.
+ *
+ * @throws {Error} Logs an error message if the Topsort auction fails.
+ */
+server.append("UpdateGrid", function (req, res, next) {
+    var viewData               = res.getViewData();
+    var originalEntries        = viewData.productSearch.productIds || [];
+    var originalEntriesArrList = new ArrayList(originalEntries);
+    var productIDs             = collections.map(originalEntriesArrList, function (e) {
+        return e.productID;
     });
+    var searchQuery            = req.querystring.q;
+    var slots                  = 6;
+    var categoryId             = req.querystring.cgid;
+
+    // â€”â€”â€” UPDATED GUARD â€”â€”â€”
+    // Disable sponsored only if the user has selected ANY nonâ€category refinement
+    var refinements = viewData.productSearch.refinements || [];
+    var filtersApplied = false;
+
+    refinements.forEach(function(refGroup) {
+        if (!refGroup.isCategoryRefinement) {
+            var values = refGroup.values || [];
+
+            values.forEach(function(val) {
+                if (val.selected) {
+                    filtersApplied = true;
+                }
+            });
+        }
+    });
+
     if (filtersApplied) {
         res.setViewData(viewData);
         return next();
     }
-    // ——— end guard ———
+    // â€”â€”â€” end guard â€”â€”â€”
 
+    var Cookie    = require("dw/web/Cookie");
+    var UUIDUtils = require("dw/util/UUIDUtils");
 
-    const Cookie    = require('dw/web/Cookie');
-    const UUIDUtils = require('dw/util/UUIDUtils');
-
-    let tsuid = request.httpCookies['tsuid'];
+    var tsuid = request.httpCookies["tsuid"];
     if (!tsuid) {
-        tsuid = new Cookie('tsuid', UUIDUtils.createUUID());
+        tsuid = new Cookie("tsuid", UUIDUtils.createUUID());
         tsuid.setMaxAge(365 * 24 * 60 * 60);
         tsuid.setHttpOnly(true);
-        tsuid.setPath('/');
+        tsuid.setPath("/");
         response.addHttpCookie(tsuid);
     }
-    const tsuidValue = tsuid.value;
+    var tsuidValue = tsuid.value;
 
-    const searchCookie = new Cookie('topsortLastQuery', encodeURIComponent(searchQuery));
+    var searchCookie = new Cookie("topsortLastQuery", encodeURIComponent(searchQuery));
     searchCookie.setMaxAge(24 * 60 * 60);
     searchCookie.setHttpOnly(true);
-    searchCookie.setPath('/');
+    searchCookie.setPath("/");
     response.addHttpCookie(searchCookie);
+    // TODO: When the compatibilty mode is at least 21.12, uncomment the normalization line
+    // var sluggedCategoryId = categoryId ? categoryId.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : null;
+    var sluggedCategoryId = categoryId ? categoryId.toLowerCase() : null;
 
-    const sluggedCategoryId = categoryId ? categoryId.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : null;
-
-    const listingsAuction = {
-        type: 'listings',
+    var listingsAuctionPayload = {
+        type: "listings",
         slots: slots,
         products: { ids: productIDs },
         opaqueUserId: tsuidValue
     };
-    if (searchQuery)  listingsAuction.searchQuery = searchQuery;
-    if (categoryId && sluggedCategoryId)   listingsAuction.category    = { id: sluggedCategoryId };
+    var listingsAuctionOptionalParams = {
+        searchQuery: searchQuery,
+        category: categoryId && sluggedCategoryId ? { id: sluggedCategoryId } : null
+    };
+    var listingsAuction = topsortHelpers.createListingsAuction(listingsAuctionPayload, listingsAuctionOptionalParams);
 
-    const auctions = topsortConfig.map(config => {
-        if (config.type === 'category' && !categoryId) return null;
-        if (config.type === 'search' && !searchQuery) return null;
+    var auctionsUnfiltered = collections.map(topsortConfig, function (config) {
+        if (config.type === "category" && !categoryId) return null;
+        if (config.type === "search" && !searchQuery) return null;
 
-        const auction = {
-            type: 'banners',
+        var auction = {
+            type: "banners",
             slots: config.slots,
             slotId: config.slotId,
             opaqueUserId: tsuidValue
         };
-        if (config.type === 'search')   auction.searchQuery = searchQuery;
-        if (config.type === 'category' && sluggedCategoryId) auction.category    = { id: sluggedCategoryId };
+
+        if (config.type === "search")   auction.searchQuery = searchQuery;
+        if (config.type === "category" && sluggedCategoryId) auction.category  = { id: sluggedCategoryId };
+
         return auction;
-    }).filter(Boolean);
+    });
+    var auctions = collections.filter(new ArrayList(auctionsUnfiltered), function (auction) {
+        return Boolean(auction);
+    });
 
     auctions.unshift(listingsAuction);
+ 
+    var auctionResponse  = TopsortService.runAuction({ auctions: auctions });
 
-    const TopsortService   = require('*/cartridge/scripts/services/TopsortService');
-    const auctionResponse  = TopsortService.runAuction({ auctions });
-
-    let winners = [];
-    let resp    = null;
+    var winners            = [];
+    var resp               = null;
+    var respResultsArrList = null;
 
     if (auctionResponse.success) {
         resp = auctionResponse.data;
         if (resp && resp.results) {
-            const listingsResult = resp.results.find(r => r.resultType === 'listings');
+            respResultsArrList = new ArrayList(resp.results);
+            var listingsResult = collections.find(respResultsArrList, function (r) {
+                return r.resultType === "listings";
+            });
             winners = listingsResult ? listingsResult.winners || [] : [];
 
-            const bannerResults = resp.results.filter(r => r.resultType === 'banners');
-            topsortConfig.forEach(cfg => {
-                const br = bannerResults.find(r => r.slotId === cfg.slotId);
+            var bannerResults = collections.filter(respResultsArrList, function (r) {
+                return r.resultType === "banners";
+            });
+            collections.forEach(topsortConfig, function (cfg) {
+                var br = collections.find(new ArrayList(bannerResults), function (r) {
+                    return r.slotId === cfg.slotId;
+                });
                 if (br) {
                     cfg.winnerUrl     = br.url;
                     cfg.resolvedBidId = br.resolvedBidId;
@@ -104,78 +143,48 @@ server.append('Show', function (req, res, next) {
             });
         }
     } else {
-        Logger.error('Topsort auction failed: {0}', auctionResponse.error);
+        Logger.error("Topsort auction failed: {0}", auctionResponse.error);
+        return next();
     }
 
-    const sponsoredTop = winners.map(w => {
-        const orig = originalEntries.find(e => e.productID === w.id);
-        if (orig) {
-            return Object.assign({}, orig, {
-                isSponsored:   true,
-                resolvedBidId: w.resolvedBidId
-            });
+    var skippedProductIds = [];
+    var sponsoredTop = collections.reduce(new ArrayList(winners), function (acc, w) {
+        var product = ProductMgr.getProduct(w.id);
+        if (!product) {
+            skippedProductIds.push(w.id);
+            return acc;
         }
-        return {
+
+        var orig = collections.find(originalEntriesArrList, function (e) {
+            return e.productID === w.id;
+        });
+        if (orig) {
+            var sponsoredProduct = {};
+            topsortHelpers.assignObject(sponsoredProduct, orig);
+            sponsoredProduct.isSponsored = true;
+            sponsoredProduct.resolvedBidId = w.resolvedBidId;
+            acc.push(sponsoredProduct);
+            return acc;
+        }
+        acc.push({
             productID:     w.id,
             isSponsored:   true,
             resolvedBidId: w.resolvedBidId
-        };
-    });
+        });
+        return acc;
+    }, []);
 
-    // HERE: logic to place the winners in the correct positions
-    // modify this to place the winners in custom positions
-
-    const productIdsLength = productIDs.length;
-    if (productIdsLength > 39) {
-        const winnersLength    = sponsoredTop.length;
-        const productsToRemove = winnersLength % 4;
-        const productIds       = viewData.productSearch.productIds;
+    if (skippedProductIds.length) {
+        Logger.error("Product IDs were not found in the instance according to the Topsort response. These product will be skipped:\n {0}", skippedProductIds.join(", "));
+    }
     
-        if (productsToRemove > 0) {
-            for (let i = 0; i < productsToRemove; i++) {
-                const tailSize   = 6;
-                const startIndex = Math.max(productIds.length - tailSize, 0);
-                const range      = productIds.length - startIndex;
-                const randomIdx  = startIndex + Math.floor(Math.random() * range);
-                productIds.splice(randomIdx, 1);
-            }
-            viewData.productSearch.productIds = productIds;
-        }
-    }
+    viewData.productSearch.productIds = topsortHelpers.placeTheSponsoredProducts(sponsoredTop, originalEntries);
+    var bannerWinnerContent = topsortHelpers.getBannerWinnerContent(respResultsArrList);
+    viewData.featuredContentUrl   = bannerWinnerContent.url;
+    viewData.featuredContentBidId = bannerWinnerContent.bidId;
+    viewData.featuredContentRedirectionUrl = bannerWinnerContent.redirectionUrl;
 
-    // Place first 2 winners at positions 0,1
-    const firstTwoWinners = sponsoredTop.slice(0, 2);
-    const withFirst = firstTwoWinners
-        .concat(originalEntries);
-    
-    // Place next 2 winners at positions 7,8
-    const nextTwoWinners = sponsoredTop.slice(2, 4);
-    const withMiddle = withFirst.slice(0, 6)
-        .concat(nextTwoWinners)
-        .concat(withFirst.slice(7));
-
-    // Place last 2 winners at second-to-last and last positions
-    const lastTwoWinners = sponsoredTop.slice(4, 6);
-    if (lastTwoWinners.length > 0) {
-        const withLast = withMiddle.slice(0, -2)
-            .concat(lastTwoWinners)
-            .concat(withMiddle.slice(-2, withMiddle.length - lastTwoWinners.length));
-        viewData.productSearch.productIds = withLast;
-    } else {
-        viewData.productSearch.productIds = withMiddle;
-    }
-
-    const banners       = resp && resp.results ? resp.results.filter(r => r.resultType === 'banners') : [];
-    const bannerWinners = banners[0] && banners[0].winners ? banners[0].winners : [];
-    if (bannerWinners.length) {
-        viewData.featuredContentUrl   = bannerWinners[0].asset[0].url;
-        viewData.featuredContentBidId = bannerWinners[0].resolvedBidId;
-    } else {
-        viewData.featuredContentUrl   = null;
-        viewData.featuredContentBidId = null;
-    }
-
-    const clientConfig = TopsortService.getClientConfig();
+    var clientConfig = TopsortService.getClientConfig();
     viewData.topsortApiKey          = clientConfig.apiKey;
     viewData.topsortApiURL          = clientConfig.apiURL;
     viewData.topsortTrackingEnabled = clientConfig.trackingEnabled;
@@ -184,5 +193,176 @@ server.append('Show', function (req, res, next) {
     res.setViewData(viewData);
     next();
 });
+
+server.append("Show", function (req, res, next) {
+    var viewData               = res.getViewData();
+    var originalEntries        = viewData.productSearch.productIds || [];
+    var originalEntriesArrList = new ArrayList(originalEntries);
+    var productIDs             = collections.map(originalEntriesArrList, function (e) {
+        return e.productID;
+    });
+    var searchQuery            = req.querystring.q;
+    var slots                  = 6;
+    var categoryId             = req.querystring.cgid;
+
+    // â€”â€”â€” UPDATED GUARD â€”â€”â€”
+    // Disable sponsored only if the user has selected ANY nonâ€category refinement
+    var refinements = viewData.productSearch.refinements || [];
+    var filtersApplied = false;
+
+    refinements.forEach(function(refGroup) {
+        if (!refGroup.isCategoryRefinement) {
+            var values = refGroup.values || [];
+
+            values.forEach(function(val) {
+                if (val.selected) {
+                    filtersApplied = true;
+                }
+            });
+        }
+    });
+
+    if (filtersApplied) {
+        res.setViewData(viewData);
+        return next();
+    }
+    // â€”â€”â€” end guard â€”â€”â€”
+
+    var Cookie    = require("dw/web/Cookie");
+    var UUIDUtils = require("dw/util/UUIDUtils");
+
+    var tsuid = request.httpCookies["tsuid"];
+    if (!tsuid) {
+        tsuid = new Cookie("tsuid", UUIDUtils.createUUID());
+        tsuid.setMaxAge(365 * 24 * 60 * 60);
+        tsuid.setHttpOnly(true);
+        tsuid.setPath("/");
+        response.addHttpCookie(tsuid);
+    }
+    var tsuidValue = tsuid.value;
+
+    var searchCookie = new Cookie("topsortLastQuery", encodeURIComponent(searchQuery));
+    searchCookie.setMaxAge(24 * 60 * 60);
+    searchCookie.setHttpOnly(true);
+    searchCookie.setPath("/");
+    response.addHttpCookie(searchCookie);
+    // TODO: When the compatibilty mode is at least 21.12, uncomment the normalization line
+    // var sluggedCategoryId = categoryId ? categoryId.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : null;
+    var sluggedCategoryId = categoryId ? categoryId.toLowerCase() : null;
+
+    var listingsAuctionPayload = {
+        type: "listings",
+        slots: slots,
+        products: { ids: productIDs },
+        opaqueUserId: tsuidValue
+    };
+    var listingsAuctionOptionalParams = {
+        searchQuery: searchQuery,
+        category: categoryId && sluggedCategoryId ? { id: sluggedCategoryId } : null
+    };
+    var listingsAuction = topsortHelpers.createListingsAuction(listingsAuctionPayload, listingsAuctionOptionalParams);
+
+    var auctionsUnfiltered = collections.map(topsortConfig, function (config) {
+        if (config.type === "category" && !categoryId) return null;
+        if (config.type === "search" && !searchQuery) return null;
+
+        var auction = {
+            type: "banners",
+            slots: config.slots,
+            slotId: config.slotId,
+            opaqueUserId: tsuidValue
+        };
+
+        if (config.type === "search")   auction.searchQuery = searchQuery;
+        if (config.type === "category" && sluggedCategoryId) auction.category  = { id: sluggedCategoryId };
+
+        return auction;
+    });
+    var auctions = collections.filter(new ArrayList(auctionsUnfiltered), function (auction) {
+        return Boolean(auction);
+    });
+
+    auctions.unshift(listingsAuction);
+ 
+    var auctionResponse  = TopsortService.runAuction({ auctions: auctions });
+
+    var winners            = [];
+    var resp               = null;
+    var respResultsArrList = null;
+
+    if (auctionResponse.success) {
+        resp = auctionResponse.data;
+        if (resp && resp.results) {
+            respResultsArrList = new ArrayList(resp.results);
+            var listingsResult = collections.find(respResultsArrList, function (r) {
+                return r.resultType === "listings";
+            });
+            winners = listingsResult ? listingsResult.winners || [] : [];
+
+            var bannerResults = collections.filter(respResultsArrList, function (r) {
+                return r.resultType === "banners";
+            });
+            collections.forEach(topsortConfig, function (cfg) {
+                var br = collections.find(new ArrayList(bannerResults), function (r) {
+                    return r.slotId === cfg.slotId;
+                });
+                if (br) {
+                    cfg.winnerUrl     = br.url;
+                    cfg.resolvedBidId = br.resolvedBidId;
+                }
+            });
+        }
+    } else {
+        Logger.error("Topsort auction failed: {0}", auctionResponse.error);
+        return next();
+    }
+
+    var skippedProductIds = [];
+    var sponsoredTop = collections.reduce(new ArrayList(winners), function (acc, w) {
+        var product = ProductMgr.getProduct(w.id);
+        if (!product) {
+            skippedProductIds.push(w.id);
+            return acc;
+        }
+
+        var orig = collections.find(originalEntriesArrList, function (e) {
+            return e.productID === w.id;
+        });
+        if (orig) {
+            var sponsoredProduct = {};
+            topsortHelpers.assignObject(sponsoredProduct, orig);
+            sponsoredProduct.isSponsored = true;
+            sponsoredProduct.resolvedBidId = w.resolvedBidId;
+            acc.push(sponsoredProduct);
+            return acc;
+        }
+        acc.push({
+            productID:     w.id,
+            isSponsored:   true,
+            resolvedBidId: w.resolvedBidId
+        });
+        return acc;
+    }, []);
+
+    if (skippedProductIds.length) {
+        Logger.error("Product IDs were not found in the instance according to the Topsort response. These product will be skipped:\n {0}", skippedProductIds.join(", "));
+    }
+    
+    viewData.productSearch.productIds = topsortHelpers.placeTheSponsoredProducts(sponsoredTop, originalEntries);
+    var bannerWinnerContent = topsortHelpers.getBannerWinnerContent(respResultsArrList);
+    viewData.featuredContentUrl   = bannerWinnerContent.url;
+    viewData.featuredContentBidId = bannerWinnerContent.bidId;
+    viewData.featuredContentRedirectionUrl = bannerWinnerContent.id;
+
+    var clientConfig = TopsortService.getClientConfig();
+    viewData.topsortApiKey          = clientConfig.apiKey;
+    viewData.topsortApiURL          = clientConfig.apiURL;
+    viewData.topsortTrackingEnabled = clientConfig.trackingEnabled;
+    viewData.tsuid                  = tsuidValue;
+
+    res.setViewData(viewData);
+    next();
+});
+
 
 module.exports = server.exports();

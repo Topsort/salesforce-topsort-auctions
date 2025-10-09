@@ -1,70 +1,101 @@
-'use strict';
+"use strict";
 
-const HTTPClient = require('dw/net/HTTPClient');
-const Site = require('dw/system/Site');
-const Logger = require('dw/system/Logger').getLogger('ProductService');
+var Site = require("dw/system/Site");
+var Logger = require("dw/system/Logger").getLogger("TopsortService");
+var LocalServiceRegistry = require("dw/svc/LocalServiceRegistry");
+var topsortMockTypes = require("*/cartridge/scripts/config/topsortMockTypes.json");
 
+/**
+ * Define the Topsort API service
+ */
+var topsortService = LocalServiceRegistry.createService("lapolar.topsort", {
+    createRequest: function (svc, params) {
+        var config = TopsortService.getConfig();
+        svc.setRequestMethod(params.method);
+        svc.setURL(config.apiURL + params.endpoint);
+        svc.addHeader("Content-Type", "application/json");
+        svc.addHeader("User-Agent", "TopsortSFCC@1.0.0");
+
+        if (config.apiKey) {
+            svc.addHeader("Authorization", "Bearer " + config.apiKey);
+        }
+
+        return JSON.stringify(params.data);
+    },
+    parseResponse: function (svc, client) {
+        return JSON.parse(client.text);
+    },
+    filterLogMessage: function (msg) {
+        return msg;
+    },
+    getRequestLogMessage: function (request) {
+        return request;
+    },
+    getResponseLogMessage: function (response) {
+        try {
+            var jsonResponse = JSON.parse(response.text);
+            return JSON.stringify(jsonResponse, null, 4);
+        } catch (e) {
+            return response.text;
+        }
+    },
+    mockFull : function (svc, params) {
+        var serviceCredentials   = svc.getConfiguration().getCredential();
+        var serviceConfiguration = JSON.parse(serviceCredentials.custom.lpJSONConfig);
+
+        return serviceConfiguration && serviceConfiguration[params.mockType]
+            ? serviceConfiguration[params.mockType]
+            : null;
+    }
+});
 /**
  * ProductService - Centralized service for product engagement API interactions
  */
-const TopsortService = {
+var TopsortService = {
     /**
      * Get configuration from site preferences
      * @returns {Object} Configuration object
      */
-    getConfig: function() {
-        const current = Site.getCurrent();
+    getConfig: function () {
+        var current = Site.getCurrent();
         return {
-            apiKey: current.getCustomPreferenceValue('topsortApiKey'),
-            apiURL: current.getCustomPreferenceValue('topsortApiURL') || 'https://api.topsort.com',
-            enabled: current.getCustomPreferenceValue('topsortEnabled'),
-            trackingEnabled: current.getCustomPreferenceValue('topsortTrackingEnabled')
+            apiKey: current.getCustomPreferenceValue("topsortApiKey"),
+            apiURL: current.getCustomPreferenceValue("topsortApiURL") || "https://api.topsort.com",
+            enabled: current.getCustomPreferenceValue("topsortEnabled"),
+            trackingEnabled: current.getCustomPreferenceValue("topsortTrackingEnabled")
         };
     },
 
     /**
-     * Make HTTP request to Topsort API
+     * Make HTTP request to Topsort API using LocalServiceRegistry
      * @param {string} endpoint - API endpoint path
      * @param {Object} data - Request payload
-     * @param {Object} options - Additional options (timeout, method)
+     * @param {string} mockType - Mock response type
      * @returns {Object} Response object with success flag and data/error
      */
-    callAPI: function(endpoint, data, options) {
-        const config = this.getConfig();
-        const client = new HTTPClient();
-        const defaults = {
-            method: 'POST',
-            timeout: 5000
-        };
-        const opts = Object.assign({}, defaults, options);
-
+    callAPI: function (endpoint, data, mockType) {
         try {
-            const url = config.apiURL + endpoint;
-            client.open(opts.method, url);
-            client.setTimeout(opts.timeout);
-            client.setRequestHeader('Content-Type', 'application/json');
-            client.setRequestHeader('User-Agent', 'TopsortSFCC@1.0.0');
+            var response = topsortService.call({
+                endpoint: endpoint,
+                data: data,
+                method: "POST",
+                mockType: mockType
+            });
 
-            if (config.apiKey) {
-                client.setRequestHeader('Authorization', 'Bearer ' + config.apiKey);
-            }
-
-            client.send(JSON.stringify(data));
-
-            if (client.statusCode === 200 || client.statusCode === 201) {
+            if (response.status === "OK") {
                 return {
                     success: true,
-                    data: JSON.parse(client.getText())
+                    data: response.object
                 };
             } else {
-                Logger.error('Product API error: {0} - {1}', client.statusCode, client.text);
+                Logger.error("Error in TopsortService.js - callAPI() with details: {0}", response.errorMessage);
                 return {
                     success: false,
-                    error: 'API request failed with status: ' + client.statusCode
+                    error: "API request failed with status: " + response.errorMessage
                 };
             }
         } catch (e) {
-            Logger.error('Product API exception: {0}', e.message);
+            Logger.error("Exception caught in TopsortService.js - callAPI() with details: {0}", e.message);
             return {
                 success: false,
                 error: e.message
@@ -77,11 +108,11 @@ const TopsortService = {
      * @param {Object} auctionData - Auction request data
      * @returns {Object} Auction response
      */
-    runAuction: function(auctionData) {
+    runAuction: function (auctionData) {
         if (!this.getConfig().enabled) {
-            return { success: false, error: 'Product engagement is disabled' };
+            return { success: false, error: "Product engagement is disabled" };
         }
-        return this.callAPI('/v2/auctions', auctionData);
+        return this.callAPI("/v2/auctions", auctionData, topsortMockTypes.runAuction);
     },
 
     /**
@@ -89,11 +120,11 @@ const TopsortService = {
      * @param {Object} eventData - Event data
      * @returns {Object} Event response
      */
-    sendEvent: function(eventData) {
+    sendEvent: function (eventData) {
         if (!this.getConfig().trackingEnabled) {
-            return { success: false, error: 'Product analytics is disabled' };
+            return { success: false, error: "Product analytics is disabled" };
         }
-        return this.callAPI('/v2/events', eventData);
+        return this.callAPI("/v2/events", eventData, topsortMockTypes.sendEvent);
     },
 
     /**
@@ -102,25 +133,29 @@ const TopsortService = {
      * @param {string} opaqueUserId - User ID from cookie
      * @returns {Object} Event response
      */
-    sendPurchaseEvent: function(order, opaqueUserId) {
+    sendPurchaseEvent: function (order, opaqueUserId) {
         if (!this.getConfig().trackingEnabled) {
-            return { success: false, error: 'Product analytics is disabled' };
+            return { success: false, error: "Product analytics is disabled" };
         }
 
-        const items = [];
-        const pliIter = order.allProductLineItems.iterator();
+        var items = [];
+        var pliIter = order.allProductLineItems.iterator();
         while (pliIter.hasNext()) {
-            const pli = pliIter.next();
-            items.push({
-                productId: pli.productID,
-                unitPrice: pli.adjustedPrice.value / pli.quantityValue,
-                quantity: pli.quantityValue
-            });
+            var pli = pliIter.next();
+            var unitPrice = pli.adjustedPrice.value / pli.quantityValue;
+
+            if (unitPrice) {
+                items.push({
+                    productId: pli.productID,
+                    unitPrice: unitPrice,
+                    quantity: pli.quantityValue
+                });
+            }
         }
 
-        const eventData = {
+        var eventData = {
             purchases: [{
-                id: require('dw/util/UUIDUtils').createUUID(),
+                id: require("dw/util/UUIDUtils").createUUID(),
                 occurredAt: new Date().toISOString(),
                 opaqueUserId: opaqueUserId,
                 items: items,
@@ -137,8 +172,8 @@ const TopsortService = {
      * Get client-side tracking configuration
      * @returns {Object} Configuration for client-side tracking
      */
-    getClientConfig: function() {
-        const config = this.getConfig();
+    getClientConfig: function () {
+        var config = this.getConfig();
         return {
             apiURL: config.apiURL,
             apiKey: config.apiKey,

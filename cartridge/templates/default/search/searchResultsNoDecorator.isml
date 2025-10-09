@@ -20,9 +20,12 @@
   }
 </script>
 
+<isif condition="${activeResults}">
+    <isinclude template="components/breadcrumbs/pageSearchBreadcrumbs"/>
+</isif>
 <isif condition="${pdict.featuredContentUrl}">
     <div id="featured-content" class="featured-content-container">
-        <a href="${pdict.featuredContentUrl}" target="_blank" rel="noopener">
+        <a href="${pdict.featuredContentRedirectionUrl}" target="_blank" rel="noopener">
             <img src="${pdict.featuredContentUrl}" alt="Featured Content" style="width: 100%;" />
         </a>
     </div>
@@ -41,10 +44,6 @@
         }
         </script>
     </isif>
-</isif>
-
-<isif condition="${activeResults}">
-    <isinclude template="components/breadcrumbs/pageSearchBreadcrumbs"/>
 </isif>
 
 <isif condition="${pdict.productSearch.bannerHtml !== null}" >
@@ -70,6 +69,8 @@
 
                 <isif condition="${pdict.productSearch.productIds.length > 0}">
                     <!--- Refinement bar --->
+
+                    XDXD
                     <div class="ms-row collapsed">
                         <div class="refinement-bar col-xs-12 col-md-4 ms-no-padding ms_hide-under-desktop">
                             <div class="refinement-bar__mobile-scroll">
