@@ -92,6 +92,10 @@ server.append("UpdateGrid", function (req, res, next) {
     };
     var listingsAuction = topsortHelpers.createListingsAuction(listingsAuctionPayload, listingsAuctionOptionalParams);
 
+    var userAgent = request.httpUserAgent || "";
+    var isMobile = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+    var device = isMobile ? "mobile" : "desktop";
+
     var auctionsUnfiltered = collections.map(topsortConfig, function (config) {
         if (config.type === "category" && !categoryId) return null;
         if (config.type === "search" && !searchQuery) return null;
@@ -100,7 +104,8 @@ server.append("UpdateGrid", function (req, res, next) {
             type: "banners",
             slots: config.slots,
             slotId: config.slotId,
-            opaqueUserId: tsuidValue
+            opaqueUserId: tsuidValue,
+            device: device
         };
 
         if (config.type === "search")   auction.searchQuery = searchQuery;
@@ -113,7 +118,7 @@ server.append("UpdateGrid", function (req, res, next) {
     });
 
     auctions.unshift(listingsAuction);
- 
+
     var auctionResponse  = TopsortService.runAuction({ auctions: auctions });
 
     var winners            = [];
@@ -129,18 +134,23 @@ server.append("UpdateGrid", function (req, res, next) {
             });
             winners = listingsResult ? listingsResult.winners || [] : [];
 
-            var bannerResults = collections.filter(respResultsArrList, function (r) {
-                return r.resultType === "banners";
-            });
-            collections.forEach(topsortConfig, function (cfg) {
-                var br = collections.find(new ArrayList(bannerResults), function (r) {
-                    return r.slotId === cfg.slotId;
-                });
-                if (br) {
-                    cfg.winnerUrl     = br.url;
-                    cfg.resolvedBidId = br.resolvedBidId;
+            // Match banner results with their corresponding auctions by index
+            // Since the API returns results in the same order as the request
+            for (var i = 0; i < auctions.length && i < resp.results.length; i++) {
+                var auction = auctions[i];
+                var result = resp.results[i];
+
+                if (auction.type === "banners" && result.resultType === "banners" && result.winners && result.winners.length > 0) {
+                    var winner = result.winners[0];
+                    collections.forEach(topsortConfig, function (cfg) {
+                        if (cfg.slotId === auction.slotId) {
+                            cfg.winnerUrl = winner.asset && winner.asset[0] ? winner.asset[0].url : null;
+                            cfg.resolvedBidId = winner.resolvedBidId;
+                            cfg.redirectionUrl = winner.id;
+                        }
+                    });
                 }
-            });
+            }
         }
     } else {
         Logger.error("Topsort auction failed: {0}", auctionResponse.error);
@@ -179,10 +189,18 @@ server.append("UpdateGrid", function (req, res, next) {
     }
     
     viewData.productSearch.productIds = topsortHelpers.placeTheSponsoredProducts(sponsoredTop, originalEntries);
-    var bannerWinnerContent = topsortHelpers.getBannerWinnerContent(respResultsArrList);
-    viewData.featuredContentUrl   = bannerWinnerContent.url;
-    viewData.featuredContentBidId = bannerWinnerContent.bidId;
-    viewData.featuredContentRedirectionUrl = bannerWinnerContent.redirectionUrl;
+
+    var bannerWinners = {};
+    collections.forEach(topsortConfig, function (cfg) {
+        if (cfg.winnerUrl) {
+            bannerWinners[cfg.slotId] = {
+                url: cfg.winnerUrl,
+                bidId: cfg.resolvedBidId,
+                redirectionUrl: cfg.redirectionUrl
+            };
+        }
+    });
+    viewData.bannerWinners = bannerWinners;
 
     var clientConfig = TopsortService.getClientConfig();
     viewData.topsortApiKey          = clientConfig.apiKey;
@@ -262,6 +280,10 @@ server.append("Show", function (req, res, next) {
     };
     var listingsAuction = topsortHelpers.createListingsAuction(listingsAuctionPayload, listingsAuctionOptionalParams);
 
+    var userAgent = request.httpUserAgent || "";
+    var isMobile = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+    var device = isMobile ? "mobile" : "desktop";
+
     var auctionsUnfiltered = collections.map(topsortConfig, function (config) {
         if (config.type === "category" && !categoryId) return null;
         if (config.type === "search" && !searchQuery) return null;
@@ -270,7 +292,8 @@ server.append("Show", function (req, res, next) {
             type: "banners",
             slots: config.slots,
             slotId: config.slotId,
-            opaqueUserId: tsuidValue
+            opaqueUserId: tsuidValue,
+            device: device
         };
 
         if (config.type === "search")   auction.searchQuery = searchQuery;
@@ -283,7 +306,7 @@ server.append("Show", function (req, res, next) {
     });
 
     auctions.unshift(listingsAuction);
- 
+
     var auctionResponse  = TopsortService.runAuction({ auctions: auctions });
 
     var winners            = [];
@@ -299,18 +322,23 @@ server.append("Show", function (req, res, next) {
             });
             winners = listingsResult ? listingsResult.winners || [] : [];
 
-            var bannerResults = collections.filter(respResultsArrList, function (r) {
-                return r.resultType === "banners";
-            });
-            collections.forEach(topsortConfig, function (cfg) {
-                var br = collections.find(new ArrayList(bannerResults), function (r) {
-                    return r.slotId === cfg.slotId;
-                });
-                if (br) {
-                    cfg.winnerUrl     = br.url;
-                    cfg.resolvedBidId = br.resolvedBidId;
+            // Match banner results with their corresponding auctions by index
+            // Since the API returns results in the same order as the request
+            for (var i = 0; i < auctions.length && i < resp.results.length; i++) {
+                var auction = auctions[i];
+                var result = resp.results[i];
+
+                if (auction.type === "banners" && result.resultType === "banners" && result.winners && result.winners.length > 0) {
+                    var winner = result.winners[0];
+                    collections.forEach(topsortConfig, function (cfg) {
+                        if (cfg.slotId === auction.slotId) {
+                            cfg.winnerUrl = winner.asset && winner.asset[0] ? winner.asset[0].url : null;
+                            cfg.resolvedBidId = winner.resolvedBidId;
+                            cfg.redirectionUrl = winner.id;
+                        }
+                    });
                 }
-            });
+            }
         }
     } else {
         Logger.error("Topsort auction failed: {0}", auctionResponse.error);
@@ -349,10 +377,18 @@ server.append("Show", function (req, res, next) {
     }
     
     viewData.productSearch.productIds = topsortHelpers.placeTheSponsoredProducts(sponsoredTop, originalEntries);
-    var bannerWinnerContent = topsortHelpers.getBannerWinnerContent(respResultsArrList);
-    viewData.featuredContentUrl   = bannerWinnerContent.url;
-    viewData.featuredContentBidId = bannerWinnerContent.bidId;
-    viewData.featuredContentRedirectionUrl = bannerWinnerContent.id;
+
+    var bannerWinners = {};
+    collections.forEach(topsortConfig, function (cfg) {
+        if (cfg.winnerUrl) {
+            bannerWinners[cfg.slotId] = {
+                url: cfg.winnerUrl,
+                bidId: cfg.resolvedBidId,
+                redirectionUrl: cfg.redirectionUrl
+            };
+        }
+    });
+    viewData.bannerWinners = bannerWinners;
 
     var clientConfig = TopsortService.getClientConfig();
     viewData.topsortApiKey          = clientConfig.apiKey;
