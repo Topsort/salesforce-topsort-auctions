@@ -1,6 +1,6 @@
 [
   {
-    "slotId": "banner-top-search",
+    "slotId": "search-top",
     "width": 1200,
     "height": 1200,
     "slots": 1,
@@ -8,13 +8,14 @@
     "type": "search"
   },
   {
-    "slotId": "categoria_linea-blanca",
+    "slotId": "category-top",
     "width": 1200,
     "height": 1200,
     "slots": 1,
     "url": "https://i.imgur.com/Qy1xFtZ.png",
     "type": "category"
-  },  {
+  },
+  {
     "slotId": "category-side",
     "width": 1200,
     "height": 1200,
@@ -29,5 +30,21 @@
     "slots": 1,
     "url": "https://i.imgur.com/Qy1xFtZ.png",
     "type": "category"
+  },
+  {
+    "slotId": "search-side",
+    "width": 1200,
+    "height": 1200,
+    "slots": 1,
+    "url": "https://i.imgur.com/Qy1xFtZ.png",
+    "type": "search"
+  },
+  {
+    "slotId": "search-bottom",
+    "width": 1200,
+    "height": 1200,
+    "slots": 1,
+    "url": "https://i.imgur.com/Qy1xFtZ.png",
+    "type": "search"
   }
 ]

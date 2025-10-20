@@ -187,8 +187,9 @@ server.append("UpdateGrid", function (req, res, next) {
     if (skippedProductIds.length) {
         Logger.error("Product IDs were not found in the instance according to the Topsort response. These product will be skipped:\n {0}", skippedProductIds.join(", "));
     }
-    
-    viewData.productSearch.productIds = topsortHelpers.placeTheSponsoredProducts(sponsoredTop, originalEntries);
+
+    var productsWithSponsored = topsortHelpers.placeTheSponsoredProducts(sponsoredTop, originalEntries);
+    viewData.productSearch.productIds = topsortHelpers.normalizeProductsToRowsOfFour(productsWithSponsored);
 
     var bannerWinners = {};
     collections.forEach(topsortConfig, function (cfg) {
@@ -375,8 +376,9 @@ server.append("Show", function (req, res, next) {
     if (skippedProductIds.length) {
         Logger.error("Product IDs were not found in the instance according to the Topsort response. These product will be skipped:\n {0}", skippedProductIds.join(", "));
     }
-    
-    viewData.productSearch.productIds = topsortHelpers.placeTheSponsoredProducts(sponsoredTop, originalEntries);
+
+    var productsWithSponsored = topsortHelpers.placeTheSponsoredProducts(sponsoredTop, originalEntries);
+    viewData.productSearch.productIds = topsortHelpers.normalizeProductsToRowsOfFour(productsWithSponsored);
 
     var bannerWinners = {};
     collections.forEach(topsortConfig, function (cfg) {

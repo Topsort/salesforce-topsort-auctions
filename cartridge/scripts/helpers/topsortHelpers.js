@@ -78,6 +78,68 @@ function placeTheSponsoredProducts(sponsoredTop, originalEntries) {
 }
 
 /**
+* Normalizes the product array to ensure it contains a multiple of 4 products.
+* If the count is not divisible by 4, it randomly removes non-sponsored products
+* from the last 10 least relevant products to make it divisible by 4.
+*
+* @param {Array<Object>} products - Array of product objects (sponsored and non-sponsored).
+* @returns {Array<Object>} - Normalized array with product count as a multiple of 4.
+*/
+function normalizeProductsToRowsOfFour(products) {
+    var totalCount = products.length;
+    var remainder = totalCount % 4;
+
+    if (remainder === 0) {
+        return products;
+    }
+
+    var toRemove = 4 - remainder;
+
+    // Find the last 10 non-sponsored products
+    var lastNonSponsored = [];
+    for (var i = products.length - 1; i >= 0 && lastNonSponsored.length < 10; i--) {
+        if (!products[i].isSponsored) {
+            lastNonSponsored.push({ index: i, product: products[i] });
+        }
+    }
+
+    if (lastNonSponsored.length === 0) {
+        return products;
+    }
+
+    // Randomly select products to remove from the last 10 non-sponsored
+    var toRemoveCount = Math.min(toRemove, lastNonSponsored.length);
+    var indicesToRemove = [];
+
+    // Shuffle and select random indices
+    for (var j = 0; j < toRemoveCount; j++) {
+        var randomIndex = Math.floor(Math.random() * lastNonSponsored.length);
+        indicesToRemove.push(lastNonSponsored[randomIndex].index);
+        lastNonSponsored.splice(randomIndex, 1);
+    }
+
+    // Sort indices in descending order to remove from end to start
+    indicesToRemove.sort(function(a, b) { return b - a; });
+
+    // Create new array without the removed products
+    var result = [];
+    for (var k = 0; k < products.length; k++) {
+        var shouldRemove = false;
+        for (var m = 0; m < indicesToRemove.length; m++) {
+            if (k === indicesToRemove[m]) {
+                shouldRemove = true;
+                break;
+            }
+        }
+        if (!shouldRemove) {
+            result.push(products[k]);
+        }
+    }
+
+    return result;
+}
+
+/**
 * Extracts and returns the list of banner winners from the Topsort auction response,
 * and sets the URL and bid ID of the first winner in the provided bannerWinnerContent object.
 *
@@ -110,5 +172,6 @@ module.exports = {
     createListingsAuction: createListingsAuction,
     placeTheSponsoredProducts: placeTheSponsoredProducts,
     getBannerWinnerContent: getBannerWinnerContent,
-    assignObject: assignObject
+    assignObject: assignObject,
+    normalizeProductsToRowsOfFour: normalizeProductsToRowsOfFour
 };
