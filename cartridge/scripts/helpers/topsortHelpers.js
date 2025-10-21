@@ -93,7 +93,7 @@ function normalizeProductsToRowsOfFour(products) {
         return products;
     }
 
-    var toRemove = 4 - remainder;
+    var toRemove = remainder;
 
     // Find the last 10 non-sponsored products
     var lastNonSponsored = [];
