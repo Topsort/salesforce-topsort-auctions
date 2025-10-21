@@ -3,21 +3,30 @@
 This cartridge integrates Topsort's auction-based sponsored product placement into Salesforce B2C Commerce (SFCC) search results, including both product listings and promotional banners.
 
 ### Supported Features
+### Supported Features
 
 This cartridge adds support for the following:
 
-1. Sponsored products with custom sponsored flag and event tracking
-2. One banner on search pages for categories and search with custom placement and event tracking
+1. **Sponsored Products**
+   - Custom sponsored flag and event tracking
+   - Advanced product placement with configurable positions
+   - Product grid normalization for consistent row-of-4 display
+   - Product validation to skip invalid auction winners
+   - Support for both `Search.Show` and `Search.UpdateGrid` endpoints
+
+2. **Multi-Banner Support**
+   - Up to 6 configurable banner slots per page
+   - Category pages: top, side, and bottom banners
+   - Search pages: top, side, and bottom banners
+   - Device-specific targeting (mobile/desktop)
+   - Independent slot configuration with custom placement
+   - Position-based event tracking for each banner
 
 ### Upcoming Updates
 
 Future versions will include:
-- Support for multiple banners
-- Additional preferences for customizing:
-  - Sponsored product placement
-  - Number of sponsored products via custom preference
-
----
+- Additional preferences for customizing sponsored product count via custom preference
+- Enhanced reporting and analytics capabilities---
 
 ## Metadata Import
 
@@ -74,22 +83,36 @@ In **Merchant Tools** > **Select Your Site** > **Site Preferences** > **Custom P
 * **topsortApiURL** — Base URL for Topsort API (e.g., `https://api.topsort.com`).
 * **topsortApiKey** — Your Topsort bearer token.
 * **topsortCookieMaxAge** — Cookie TTL in seconds (default: `86400`).
+* **topsortEnabled** — Enable/disable sponsored products functionality.
+* **topsortTrackingEnabled** — Enable/disable event tracking.
 
 ---
 
 ## Configuration Files
 
-* **Banner Slots**
+### Banner Slots Configuration
 
-  * File: `/cartridge/scripts/config/topsort_banners.json`
-  * Defines banner slot IDs, slot counts, and types (`search` or `category`).
+* **File**: `/cartridge/scripts/config/topsort_banners.json`
+* **Purpose**: Defines banner slot IDs, slot counts, types, and device targeting.
+* **Supports 6 banner positions**:
+  - `category-top`: Top banner on category pages (1 slot)
+  - `category-side`: Sidebar banner on category pages (1 slot)
+  - `category-bottom`: Bottom banner on category pages (1 slot)
+  - `search-top`: Top banner on search pages (1 slot)
+  - `search-side`: Sidebar banner on search pages (1 slot)
+  - `search-bottom`: Bottom banner on search pages (1 slot)
 
-  ```json
-  [
-    { "slotId": "banner-1", "slots": 1, "type": "search" },
-    { "slotId": "cat-banner", "slots": 2, "type": "category" }
-  ]
-  ```
+**Example Configuration**:
+```json
+[
+  { "slotId": "category-top", "slots": 1, "type": "category" },
+  { "slotId": "category-side", "slots": 1, "type": "category" },
+  { "slotId": "category-bottom", "slots": 1, "type": "category" },
+  { "slotId": "search-top", "slots": 1, "type": "search" },
+  { "slotId": "search-side", "slots": 1, "type": "search" },
+  { "slotId": "search-bottom", "slots": 1, "type": "search" }
+]
+```
 
 ---
 

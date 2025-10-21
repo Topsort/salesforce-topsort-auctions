@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.1.0 (20 Oct, 2025)
+
+### New Features
+* Added core infrastructure for sponsored products with helper utilities and collection functions
+* Implemented multi-banner support with up to 6 configurable banner slots (3 for category pages, 3 for search pages)
+* Added device detection (mobile/desktop) for targeted banner auctions
+* Introduced product grid normalization to ensure products display in complete rows of 4
+* Added support for both `Search.Show` and `Search.UpdateGrid` endpoints
+* Implemented product validation to skip invalid auction winners
+
+### Enhancements
+* Refactored service layer to use LocalServiceRegistry for improved reliability
+* Enhanced banner placement with position-based tracking (top, side, bottom)
+* Added index-based banner result matching for improved accuracy
+* Improved banner configuration with independent slot IDs and types
+
+### Bug Fixes
+* Fixed product removal calculation in grid normalization function
+
 ## 1.0.1 (17 Jul, 2025)
 * Added guard to disable sponsored products when non-category facets/refinements are applied to search results
 
