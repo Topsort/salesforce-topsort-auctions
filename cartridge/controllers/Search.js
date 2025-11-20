@@ -40,11 +40,11 @@ server.append("UpdateGrid", function (req, res, next) {
     var refinements = viewData.productSearch.refinements || [];
     var filtersApplied = false;
 
-    refinements.forEach(function(refGroup) {
+    collections.forEach(new ArrayList(refinements), function(refGroup) {
         if (!refGroup.isCategoryRefinement) {
             var values = refGroup.values || [];
 
-            values.forEach(function(val) {
+            collections.forEach(new ArrayList(values), function(val) {
                 if (val.selected) {
                     filtersApplied = true;
                 }
@@ -70,12 +70,15 @@ server.append("UpdateGrid", function (req, res, next) {
         response.addHttpCookie(tsuid);
     }
     var tsuidValue = tsuid.value;
+    var searchCookie;
 
-    var searchCookie = new Cookie("topsortLastQuery", encodeURIComponent(searchQuery));
-    searchCookie.setMaxAge(24 * 60 * 60);
-    searchCookie.setHttpOnly(true);
-    searchCookie.setPath("/");
-    response.addHttpCookie(searchCookie);
+    if (searchQuery) {
+        searchCookie = new Cookie("topsortLastQuery", encodeURIComponent(searchQuery));
+        searchCookie.setMaxAge(24 * 60 * 60);
+        searchCookie.setHttpOnly(true);
+        searchCookie.setPath("/");
+        response.addHttpCookie(searchCookie);
+    }
     // TODO: When the compatibilty mode is at least 21.12, uncomment the normalization line
     // var sluggedCategoryId = categoryId ? categoryId.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : null;
     var sluggedCategoryId = categoryId ? categoryId.toLowerCase() : null;
@@ -87,8 +90,8 @@ server.append("UpdateGrid", function (req, res, next) {
         opaqueUserId: tsuidValue
     };
 
-    const isCategorySearch = categoryId && sluggedCategoryId;
-    const isSearchSearch = searchQuery && !isCategorySearch;
+    var isCategorySearch = categoryId && sluggedCategoryId;
+    var isSearchSearch = searchQuery && !isCategorySearch;
 
     var listingsAuctionOptionalParams = {
         searchQuery: searchQuery,
@@ -233,11 +236,11 @@ server.append("Show", function (req, res, next) {
     var refinements = viewData.productSearch.refinements || [];
     var filtersApplied = false;
 
-    refinements.forEach(function(refGroup) {
+    collections.forEach(new ArrayList(refinements), function(refGroup) {
         if (!refGroup.isCategoryRefinement) {
             var values = refGroup.values || [];
 
-            values.forEach(function(val) {
+            collections.forEach(new ArrayList(values), function(val) {
                 if (val.selected) {
                     filtersApplied = true;
                 }
@@ -263,12 +266,15 @@ server.append("Show", function (req, res, next) {
         response.addHttpCookie(tsuid);
     }
     var tsuidValue = tsuid.value;
+    var searchCookie;
 
-    var searchCookie = new Cookie("topsortLastQuery", encodeURIComponent(searchQuery));
-    searchCookie.setMaxAge(24 * 60 * 60);
-    searchCookie.setHttpOnly(true);
-    searchCookie.setPath("/");
-    response.addHttpCookie(searchCookie);
+    if (searchQuery) {
+        searchCookie = new Cookie("topsortLastQuery", encodeURIComponent(searchQuery));
+        searchCookie.setMaxAge(24 * 60 * 60);
+        searchCookie.setHttpOnly(true);
+        searchCookie.setPath("/");
+        response.addHttpCookie(searchCookie);
+    }
     // TODO: When the compatibilty mode is at least 21.12, uncomment the normalization line
     // var sluggedCategoryId = categoryId ? categoryId.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : null;
     var sluggedCategoryId = categoryId ? categoryId.toLowerCase() : null;
@@ -280,8 +286,8 @@ server.append("Show", function (req, res, next) {
         opaqueUserId: tsuidValue
     };
 
-    const isCategorySearch = categoryId && sluggedCategoryId;
-    const isSearchSearch = searchQuery && !isCategorySearch;
+    var isCategorySearch = categoryId && sluggedCategoryId;
+    var isSearchSearch = searchQuery && !isCategorySearch;
 
     var listingsAuctionOptionalParams = {
         searchQuery: searchQuery,

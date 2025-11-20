@@ -1,4 +1,5 @@
-"use strict"; 
+"use strict";
+// Force cache refresh 
 
 var collections = require("*/cartridge/scripts/util/collections");
 
