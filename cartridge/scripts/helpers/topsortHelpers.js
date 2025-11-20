@@ -81,6 +81,8 @@ function placeTheSponsoredProducts(sponsoredTop, originalEntries) {
 * Normalizes the product array to ensure it contains a multiple of 4 products.
 * If the count is not divisible by 4, it randomly removes non-sponsored products
 * from the last 10 least relevant products to make it divisible by 4.
+* Only applies normalization when there are more than 10 products to avoid removing
+* results from specific searches (e.g., PLU searches).
 *
 * @param {Array<Object>} products - Array of product objects (sponsored and non-sponsored).
 * @returns {Array<Object>} - Normalized array with product count as a multiple of 4.
@@ -89,7 +91,8 @@ function normalizeProductsToRowsOfFour(products) {
     var totalCount = products.length;
     var remainder = totalCount % 4;
 
-    if (remainder === 0) {
+    // Don't normalize if already divisible by 4 or if there are 10 or fewer products
+    if (remainder === 0 || totalCount <= 10) {
         return products;
     }
 

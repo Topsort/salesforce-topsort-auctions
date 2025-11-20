@@ -86,6 +86,10 @@ server.append("UpdateGrid", function (req, res, next) {
         products: { ids: productIDs },
         opaqueUserId: tsuidValue
     };
+
+    const isCategorySearch = categoryId && sluggedCategoryId;
+    const isSearchSearch = searchQuery && !isCategorySearch;
+
     var listingsAuctionOptionalParams = {
         searchQuery: searchQuery,
         category: categoryId && sluggedCategoryId ? { id: sluggedCategoryId } : null
@@ -97,8 +101,8 @@ server.append("UpdateGrid", function (req, res, next) {
     var device = isMobile ? "mobile" : "desktop";
 
     var auctionsUnfiltered = collections.map(topsortConfig, function (config) {
-        if (config.type === "category" && !categoryId) return null;
-        if (config.type === "search" && !searchQuery) return null;
+        if (config.type === "category" && !isCategorySearch) return null;
+        if (config.type === "search" && !isSearchSearch) return null;
 
         var auction = {
             type: "banners",
@@ -275,6 +279,10 @@ server.append("Show", function (req, res, next) {
         products: { ids: productIDs },
         opaqueUserId: tsuidValue
     };
+
+    const isCategorySearch = categoryId && sluggedCategoryId;
+    const isSearchSearch = searchQuery && !isCategorySearch;
+
     var listingsAuctionOptionalParams = {
         searchQuery: searchQuery,
         category: categoryId && sluggedCategoryId ? { id: sluggedCategoryId } : null
@@ -286,8 +294,8 @@ server.append("Show", function (req, res, next) {
     var device = isMobile ? "mobile" : "desktop";
 
     var auctionsUnfiltered = collections.map(topsortConfig, function (config) {
-        if (config.type === "category" && !categoryId) return null;
-        if (config.type === "search" && !searchQuery) return null;
+        if (config.type === "category" && !isCategorySearch) return null;
+        if (config.type === "search" && !isSearchSearch) return null;
 
         var auction = {
             type: "banners",
