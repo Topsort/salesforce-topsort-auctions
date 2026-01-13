@@ -99,7 +99,7 @@ server.append("UpdateGrid", function (req, res, next) {
     };
     var listingsAuction = topsortHelpers.createListingsAuction(listingsAuctionPayload, listingsAuctionOptionalParams);
 
-    var userAgent = request.httpUserAgent || "";
+    var userAgent = req.httpHeaders.get("user-agent") || req.httpUserAgent || "";
     var isMobile = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
     var device = isMobile ? "mobile" : "desktop";
 
@@ -295,7 +295,7 @@ server.append("Show", function (req, res, next) {
     };
     var listingsAuction = topsortHelpers.createListingsAuction(listingsAuctionPayload, listingsAuctionOptionalParams);
 
-    var userAgent = request.httpUserAgent || "";
+    var userAgent = req.httpHeaders.get("user-agent") || req.httpUserAgent || "";
     var isMobile = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
     var device = isMobile ? "mobile" : "desktop";
 
