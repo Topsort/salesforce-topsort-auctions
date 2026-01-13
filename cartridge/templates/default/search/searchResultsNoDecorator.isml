@@ -20,28 +20,54 @@
   }
 </script>
 
-<isif condition="${pdict.featuredContentUrl}">
-    <div id="featured-content" class="featured-content-container">
-        <a href="${pdict.featuredContentUrl}" target="_blank" rel="noopener">
-            <img src="${pdict.featuredContentUrl}" alt="Featured Content" style="width: 100%;" />
+<isset name="searchTopBanner" value="${pdict.bannerWinners['search-top']}" scope="page" />
+<isif condition="${searchTopBanner && searchTopBanner.url}">
+    <div id="featured-content" class="featured-content-container" style="margin-top: 1rem;">
+        <a href="${searchTopBanner.redirectionUrl}" target="_blank" rel="noopener">
+            <img src="${searchTopBanner.url}" alt="Featured Content" style="width: 100%; border-radius: 12px;" />
         </a>
     </div>
-
-    <isif condition="${pdict.featuredContentBidId}">
-        <script>
-        if (window.ProductEngagement) {
-          ProductEngagement.setupContentTracking({
-            userId: '${pdict.tsuid || ""}',
-            position: 1,
-            page: ${pdict.productSearch.page || 1},
-            pageSize: ${pdict.productSearch.hitsPerPage || 12},
-            categoryId: '${pdict.request.querystring.cgid || ""}',
-            resolvedBidId: '${pdict.featuredContentBidId || ""}'
-          });
-        }
-        </script>
-    </isif>
 </isif>
+<isif condition="${searchTopBanner.bidId}">
+    <script>
+        if (window.ProductEngagement) {
+            ProductEngagement.setupContentTracking({
+                userId: '${pdict.tsuid || ""}',
+                position: 4,
+                page: ${pdict.productSearch.page || 1},
+                pageSize: ${pdict.productSearch.hitsPerPage || 12},
+                categoryId: '${pdict.request.querystring.cgid || ""}',
+                resolvedBidId: '${searchTopBanner.bidId || ""}'
+            });
+        }
+    </script>
+</isif>
+
+<isset name="categoryTopBanner" value="${pdict.bannerWinners['category-top']}" scope="page" />
+<isif condition="${categoryTopBanner && categoryTopBanner.url}">
+    <div id="featured-content" class="featured-content-container" style="margin-top: 1rem;">
+        <a href="${categoryTopBanner.redirectionUrl}" target="_blank" rel="noopener">
+            <img src="${categoryTopBanner.url}" alt="Featured Content" style="width: 100%; border-radius: 12px;" />
+        </a>
+    </div>
+</isif>
+<isif condition="${categoryTopBanner.bidId}">
+    <script>
+        if (window.ProductEngagement) {
+            ProductEngagement.setupContentTracking({
+                userId: '${pdict.tsuid || ""}',
+                position: 4,
+                page: ${pdict.productSearch.page || 1},
+                pageSize: ${pdict.productSearch.hitsPerPage || 12},
+                categoryId: '${pdict.request.querystring.cgid || ""}',
+                resolvedBidId: '${categoryTopBanner.bidId || ""}'
+            });
+        }
+    </script>
+</isif>
+
+&nbsp;
+
 
 <isif condition="${activeResults}">
     <isinclude template="components/breadcrumbs/pageSearchBreadcrumbs"/>
@@ -70,6 +96,7 @@
 
                 <isif condition="${pdict.productSearch.productIds.length > 0}">
                     <!--- Refinement bar --->
+
                     <div class="ms-row collapsed">
                         <div class="refinement-bar col-xs-12 col-md-4 ms-no-padding ms_hide-under-desktop">
                             <div class="refinement-bar__mobile-scroll">
@@ -99,6 +126,52 @@
                                     <div class="refinement-bar__advertising ms_hide-under-desktop">
                                         <iscontentasset aid="refine-advertising" />
                                     </div>
+                                </isif>
+
+                                <isset name="categorySideBanner" value="${pdict.bannerWinners['category-side']}" scope="page" />
+                                <isif condition="${categorySideBanner && categorySideBanner.url}">
+                                    <div class="refinement-bar__banner ms_hide-under-desktop" style="padding: 1rem 0;">
+                                        <a href="${categorySideBanner.redirectionUrl}" target="_blank" rel="noopener">
+                                            <img src="${categorySideBanner.url}" alt="Category Banner" style="width: 100%; border-radius: 12px;" />
+                                        </a>
+                                    </div>
+
+                                    <isif condition="${categorySideBanner.bidId}">
+                                        <script>
+                                        if (window.ProductEngagement) {
+                                          ProductEngagement.setupContentTracking({
+                                            userId: '${pdict.tsuid || ""}',
+                                            position: 2,
+                                            page: ${pdict.productSearch.page || 1},
+                                            pageSize: ${pdict.productSearch.hitsPerPage || 12},
+                                            categoryId: '${pdict.request.querystring.cgid || ""}',
+                                            resolvedBidId: '${categorySideBanner.bidId || ""}'
+                                          });
+                                        }
+                                        </script>
+                                    </isif>
+                                </isif>
+                                <isset name="searchTopBanner" value="${pdict.bannerWinners['search-side']}" scope="page" />
+                                <isif condition="${searchTopBanner && searchTopBanner.url}">
+                                    <div class="refinement-bar__banner ms_hide-under-desktop" style="padding: 1rem 0;">
+                                        <a href="${searchTopBanner.redirectionUrl}" target="_blank" rel="noopener">
+                                            <img src="${searchTopBanner.url}" alt="Search Top Banner" style="width: 100%; border-radius: 12px;" />
+                                        </a>
+                                    </div>
+                                </isif>
+                                <isif condition="${searchTopBanner.bidId}">
+                                    <script>
+                                        if (window.ProductEngagement) {
+                                            ProductEngagement.setupContentTracking({
+                                                userId: '${pdict.tsuid || ""}',
+                                                position: 3,
+                                                page: ${pdict.productSearch.page || 1},
+                                                pageSize: ${pdict.productSearch.hitsPerPage || 12},
+                                                categoryId: '${pdict.request.querystring.cgid || ""}',
+                                                resolvedBidId: '${searchTopBanner.bidId || ""}'
+                                            });
+                                        }
+                                    </script>
                                 </isif>
                             </div>
                         </div>
@@ -143,6 +216,53 @@
                                 <isinclude template="search/productGrid" />
                             </div>
 
+                            <isset name="topSearchBanner" value="${pdict.bannerWinners['category-bottom']}" scope="page" />
+                            <isif condition="${topSearchBanner && topSearchBanner.url}">
+                                <div id="featured-content" class="featured-content-container" style="margin-top: 1rem;">
+                                    <a href="${topSearchBanner.redirectionUrl}" target="_blank" rel="noopener">
+                                        <img src="${topSearchBanner.url}" alt="Featured Content" style="width: 100%; border-radius: 12px;" />
+                                    </a>
+                                </div>
+
+                                <isif condition="${topSearchBanner.bidId}">
+                                    <script>
+                                    if (window.ProductEngagement) {
+                                      ProductEngagement.setupContentTracking({
+                                        userId: '${pdict.tsuid || ""}',
+                                        position: 1,
+                                        page: ${pdict.productSearch.page || 1},
+                                        pageSize: ${pdict.productSearch.hitsPerPage || 12},
+                                        categoryId: '${pdict.request.querystring.cgid || ""}',
+                                        resolvedBidId: '${topSearchBanner.bidId || ""}'
+                                      });
+                                    }
+                                    </script>
+                                </isif>
+                            </isif>
+
+                            <isset name="searchBottomBanner" value="${pdict.bannerWinners['search-bottom']}" scope="page" />
+                            <isif condition="${searchBottomBanner && searchBottomBanner.url}">
+                                <div id="featured-content" class="featured-content-container" style="margin-top: 1rem; margin-bottom: 3rem;">
+                                    <a href="${searchBottomBanner.redirectionUrl}" target="_blank" rel="noopener">
+                                        <img src="${searchBottomBanner.url}" alt="Featured Content" style="width: 100%; border-radius: 12px;" />
+                                    </a>
+                                </div>
+                            </isif>
+                            <isif condition="${searchBottomBanner.bidId}">
+                                <script>
+                                    if (window.ProductEngagement) {
+                                        ProductEngagement.setupContentTracking({
+                                            userId: '${pdict.tsuid || ""}',
+                                            position: 4,
+                                            page: ${pdict.productSearch.page || 1},
+                                            pageSize: ${pdict.productSearch.hitsPerPage || 12},
+                                            categoryId: '${pdict.request.querystring.cgid || ""}',
+                                            resolvedBidId: '${searchBottomBanner.bidId || ""}'
+                                        });
+                                    }
+                                </script>
+                            </isif>
+                            &nbsp;
                             <isif condition="${pdict.category}">
                                 <isslot id="plp-content-slot" description="PLP content slot" context="category" context-object="${pdict.category}"/>
                             </isif>

@@ -1,6 +1,7 @@
 /**
- * Product Engagement Module
- * Centralized module for handling user interactions and analytics
+ * Engagement module for tracking product interactions and views.
+ *
+ * @namespace ProductEngagement
  */
 window.ProductEngagement = (function() {
     'use strict';
@@ -38,7 +39,7 @@ window.ProductEngagement = (function() {
      * @returns {string} 'mobile' or 'desktop'
      */
     function getDeviceType() {
-        return navigator.userAgent.match(/Mobi/) ? 'mobile' : 'desktop';
+        return /Mobi/.exec(navigator.userAgent) ? 'mobile' : 'desktop';
     }
 
     /**
@@ -165,8 +166,6 @@ window.ProductEngagement = (function() {
 
     return {
         init: init,
-        recordView: recordView,
-        recordInteraction: recordInteraction,
         setupItemTracking: setupItemTracking,
         setupContentTracking: setupContentTracking
     };
