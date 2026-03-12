@@ -8,7 +8,9 @@ var topsortMockTypes = require("*/cartridge/scripts/config/topsortMockTypes.json
 /**
  * Define the Topsort API service
  */
-var topsortService = LocalServiceRegistry.createService("lapolar.topsort", {
+var topsortService;
+try {
+    topsortService = LocalServiceRegistry.createService("topsort", {
     createRequest: function (svc, params) {
         var config = TopsortService.getConfig();
         svc.setRequestMethod(params.method);
@@ -47,7 +49,11 @@ var topsortService = LocalServiceRegistry.createService("lapolar.topsort", {
             ? serviceConfiguration[params.mockType]
             : null;
     }
-});
+    });
+} catch (e) {
+    Logger.error("Failed to initialize Topsort service: {0}. Please configure the 'topsort' service in Business Manager under Administration > Operations > Services", e.message);
+    topsortService = null;
+}
 /**
  * ProductService - Centralized service for product engagement API interactions
  */
@@ -74,6 +80,15 @@ var TopsortService = {
      * @returns {Object} Response object with success flag and data/error
      */
     callAPI: function (endpoint, data, mockType) {
+        // Check if service is initialized
+        if (!topsortService) {
+            Logger.warn("Topsort service is not configured. Please configure the 'topsort' service in Business Manager.");
+            return {
+                success: false,
+                error: "Topsort service is not configured in Business Manager"
+            };
+        }
+
         try {
             var response = topsortService.call({
                 endpoint: endpoint,

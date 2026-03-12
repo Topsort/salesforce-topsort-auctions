@@ -156,9 +156,14 @@ window.ProductEngagement = (function() {
     function setupContentTracking(params) {
         recordView(params);
 
-        var element = document.getElementById('featured-content');
+        var elementId = params.elementId || 'featured-content';
+        var element = document.getElementById(elementId);
+
         if (element) {
-            element.addEventListener('click', function() {
+            var link = element.querySelector('a');
+            var clickTarget = link || element;
+
+            clickTarget.addEventListener('click', function(e) {
                 recordInteraction(params);
             });
         }

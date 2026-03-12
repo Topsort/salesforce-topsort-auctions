@@ -50,6 +50,23 @@ Future versions will include:
 
 ---
 
+## Service Configuration
+
+**Important**: You must create a service in Salesforce Business Manager for Topsort API calls.
+
+1. **Navigate to Services**
+   Go to **Administration** > **Operations** > **Services**.
+
+2. **Create Service**
+   - Click **New** to create a new service
+   - Set **Name**: `topsort`
+   - Set **Type**: `HTTP`
+   - Check **Enabled**
+
+Without this service configuration, the Topsort integration will not be able to make API calls.
+
+---
+
 ## Prerequisites
 
 * SFCC instance (Sandbox or Production) with WebDAV access
