@@ -24,7 +24,7 @@ server.extend(superSearch);
  *
  * @throws {Error} Logs an error message if the Topsort auction fails.
  */
-server.append("UpdateGrid", function (req, res, next) {
+server.append("ShowAjax", function (req, res, next) {
     var viewData               = res.getViewData();
     var originalEntries        = viewData.productSearch.productIds || [];
     var originalEntriesArrList = new ArrayList(originalEntries);
