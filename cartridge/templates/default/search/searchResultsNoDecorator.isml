@@ -32,7 +32,7 @@
                         position: 4,
                         page: ${pdict.productSearch.page || 1},
                         pageSize: ${pdict.productSearch.hitsPerPage || 12},
-                        categoryId: '${pdict.request.querystring.cgid || ""}',
+                        categoryId: '${pdict.topsortCategoryId || ""}',
                         resolvedBidId: '${searchTopBanner.bidId || ""}'
                     });
                 }
@@ -57,7 +57,7 @@
                         position: 4,
                         page: ${pdict.productSearch.page || 1},
                         pageSize: ${pdict.productSearch.hitsPerPage || 12},
-                        categoryId: '${pdict.request.querystring.cgid || ""}',
+                        categoryId: '${pdict.topsortCategoryId || ""}',
                         resolvedBidId: '${categoryTopBanner.bidId || ""}'
                     });
                 }
@@ -130,7 +130,7 @@
                                                 position: 2,
                                                 page: ${pdict.productSearch.page || 1},
                                                 pageSize: ${pdict.productSearch.hitsPerPage || 12},
-                                                categoryId: '${pdict.request.querystring.cgid || ""}',
+                                                categoryId: '${pdict.topsortCategoryId || ""}',
                                                 resolvedBidId: '${categorySideBanner.bidId || ""}'
                                             });
                                             }
@@ -156,7 +156,7 @@
                                                         position: 3,
                                                         page: ${pdict.productSearch.page || 1},
                                                         pageSize: ${pdict.productSearch.hitsPerPage || 12},
-                                                        categoryId: '${pdict.request.querystring.cgid || ""}',
+                                                        categoryId: '${pdict.topsortCategoryId || ""}',
                                                         resolvedBidId: '${searchSideBanner.bidId || ""}'
                                                     });
                                                 }
@@ -207,7 +207,13 @@
                         </div>
 
                         <!--- Product Grid --->
-                        <div class="row px-3 grid-view product-view loading" id="productRow">
+                        <iscomment>
+                            TEMP WORKAROUND: "loading" is intentionally omitted from the initial render
+                            so the grid is visible even when the app_storefront_hites client JS bundle
+                            fails (a broken featherlight import crashes search.js init before it strips
+                            "loading", leaving the grid hidden). Restore "loading" once that build is fixed.
+                        </iscomment>
+                        <div class="row px-3 grid-view product-view" id="productRow">
                             <isinclude template="search/productGrid" />
                         </div>
 
@@ -231,7 +237,7 @@
                                     position: 1,
                                     page: ${pdict.productSearch.page || 1},
                                     pageSize: ${pdict.productSearch.hitsPerPage || 12},
-                                    categoryId: '${pdict.request.querystring.cgid || ""}',
+                                    categoryId: '${pdict.topsortCategoryId || ""}',
                                     resolvedBidId: '${categoryBottomBanner.bidId || ""}'
                                 });
                                 }
@@ -257,7 +263,7 @@
                                             position: 4,
                                             page: ${pdict.productSearch.page || 1},
                                             pageSize: ${pdict.productSearch.hitsPerPage || 12},
-                                            categoryId: '${pdict.request.querystring.cgid || ""}',
+                                            categoryId: '${pdict.topsortCategoryId || ""}',
                                             resolvedBidId: '${searchBottomBanner.bidId || ""}'
                                         });
                                     }

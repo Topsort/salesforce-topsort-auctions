@@ -26,6 +26,22 @@ server.extend(superSearch);
  */
 server.append("ShowAjax", function (req, res, next) {
     var viewData               = res.getViewData();
+    // HITES renders Page Designer category pages via res.page() and returns before
+    // productSearch is set. There is nothing for the controller to do in that case
+    // (the productList PD component handles Topsort), so skip cleanly instead of
+    // dereferencing an undefined productSearch.
+    if (!viewData.productSearch) {
+        return next();
+    }
+    // Fail-open defaults: the template reads pdict.bannerWinners[...] and
+    // pdict.topsortTrackingEnabled near the top, so guarantee they always exist.
+    // Otherwise the refinement guard or an auction failure returns before these are
+    // set, pdict.bannerWinners is undefined, and the whole grid fails to render.
+    viewData.bannerWinners          = viewData.bannerWinners || {};
+    viewData.topsortTrackingEnabled = viewData.topsortTrackingEnabled || false;
+    // Provide the category id directly: pdict.request can be null in this render
+    // context, so the template must not dereference pdict.request.querystring.cgid.
+    viewData.topsortCategoryId      = (req.querystring && req.querystring.cgid) || "";
     var originalEntries        = viewData.productSearch.productIds || [];
     var originalEntriesArrList = new ArrayList(originalEntries);
     var productIDs             = collections.map(originalEntriesArrList, function (e) {
@@ -222,6 +238,22 @@ server.append("ShowAjax", function (req, res, next) {
 
 server.append("Show", function (req, res, next) {
     var viewData               = res.getViewData();
+    // HITES renders Page Designer category pages via res.page() and returns before
+    // productSearch is set. There is nothing for the controller to do in that case
+    // (the productList PD component handles Topsort), so skip cleanly instead of
+    // dereferencing an undefined productSearch.
+    if (!viewData.productSearch) {
+        return next();
+    }
+    // Fail-open defaults: the template reads pdict.bannerWinners[...] and
+    // pdict.topsortTrackingEnabled near the top, so guarantee they always exist.
+    // Otherwise the refinement guard or an auction failure returns before these are
+    // set, pdict.bannerWinners is undefined, and the whole grid fails to render.
+    viewData.bannerWinners          = viewData.bannerWinners || {};
+    viewData.topsortTrackingEnabled = viewData.topsortTrackingEnabled || false;
+    // Provide the category id directly: pdict.request can be null in this render
+    // context, so the template must not dereference pdict.request.querystring.cgid.
+    viewData.topsortCategoryId      = (req.querystring && req.querystring.cgid) || "";
     var originalEntries        = viewData.productSearch.productIds || [];
     var originalEntriesArrList = new ArrayList(originalEntries);
     var productIDs             = collections.map(originalEntriesArrList, function (e) {

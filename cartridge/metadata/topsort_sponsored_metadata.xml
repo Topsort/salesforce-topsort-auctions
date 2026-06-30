@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata xmlns="http://www.demandware.com/xml/impex/metadata/2006-10-31">
+    <type-extension type-id="SitePreferences">
+        <custom-attribute-definitions>
+            <attribute-definition attribute-id="topsortEnabled">
+                <display-name xml:lang="x-default">Enable Topsort Integration</display-name>
+                <description xml:lang="x-default">When enabled, Topsort auctions will be run for search and category pages</description>
+                <type>boolean</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <default-value>false</default-value>
+            </attribute-definition>
+            <attribute-definition attribute-id="topsortApiKey">
+                <display-name xml:lang="x-default">Topsort API Key</display-name>
+                <description xml:lang="x-default">API key for authenticating with the Topsort API</description>
+                <type>string</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <min-length>0</min-length>
+            </attribute-definition>
+            <attribute-definition attribute-id="topsortApiURL">
+                <display-name xml:lang="x-default">Topsort API Host</display-name>
+                <description xml:lang="x-default">The host URL for the Topsort API (e.g., https://api.topsort.com)</description>
+                <type>string</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <min-length>0</min-length>
+                <default-value>https://api.topsort.com</default-value>
+            </attribute-definition>
+            <attribute-definition attribute-id="topsortTrackingEnabled">
+                <display-name xml:lang="x-default">Enable Topsort Event Tracking</display-name>
+                <description xml:lang="x-default">Enable tracking of impressions, clicks, and purchases for Topsort sponsored products</description>
+                <type>boolean</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <default-value>true</default-value>
+            </attribute-definition>
+        </custom-attribute-definitions>
+        <group-definitions>
+            <attribute-group group-id="Topsort">
+                <display-name xml:lang="x-default">Topsort</display-name>
+                <attribute attribute-id="topsortEnabled"/>
+                <attribute attribute-id="topsortApiKey"/>
+                <attribute attribute-id="topsortApiURL"/>
+                <attribute attribute-id="topsortTrackingEnabled"/>
+            </attribute-group>
+        </group-definitions>
+    </type-extension>
+</metadata>

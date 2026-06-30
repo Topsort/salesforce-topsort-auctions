@@ -1,0 +1,50 @@
+[
+  {
+    "slotId": "search-top",
+    "width": 1200,
+    "height": 1200,
+    "slots": 1,
+    "url": "https://i.imgur.com/Qy1xFtZ.png",
+    "type": "search"
+  },
+  {
+    "slotId": "category-top",
+    "width": 1200,
+    "height": 1200,
+    "slots": 1,
+    "url": "https://i.imgur.com/Qy1xFtZ.png",
+    "type": "category"
+  },
+  {
+    "slotId": "category-side",
+    "width": 1200,
+    "height": 1200,
+    "slots": 1,
+    "url": "https://i.imgur.com/Qy1xFtZ.png",
+    "type": "category"
+  },
+  {
+    "slotId": "category-bottom",
+    "width": 1200,
+    "height": 1200,
+    "slots": 1,
+    "url": "https://i.imgur.com/Qy1xFtZ.png",
+    "type": "category"
+  },
+  {
+    "slotId": "search-side",
+    "width": 1200,
+    "height": 1200,
+    "slots": 1,
+    "url": "https://i.imgur.com/Qy1xFtZ.png",
+    "type": "search"
+  },
+  {
+    "slotId": "search-bottom",
+    "width": 1200,
+    "height": 1200,
+    "slots": 1,
+    "url": "https://i.imgur.com/Qy1xFtZ.png",
+    "type": "search"
+  }
+]

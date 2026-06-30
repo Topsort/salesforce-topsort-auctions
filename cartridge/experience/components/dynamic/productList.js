@@ -210,9 +210,15 @@ module.exports.render = function (context, modelIn) {
     var productIDs             = collections.map(originalEntriesArrList, function (e) {
         return e.productID;
     });
-    var searchQuery            = false; //Search query is not needed for category pages, and PLP should be category based
+    var searchQuery            = null; //Search query is not needed for category pages, and PLP should be category based
     var slots                  = 6;
     var categoryId             = model.categoryId;
+
+    // Fail-open defaults so the rendered template never breaks if Topsort is disabled,
+    // an auction fails, or the refinement guard short-circuits before winners/config are set.
+    model.bannerWinners          = model.bannerWinners || {};
+    model.topsortTrackingEnabled = model.topsortTrackingEnabled || false;
+    model.topsortCategoryId      = categoryId || "";
 
     // Disable sponsored only if the user has selected ANY non-category refinement
     var refinements = viewData.productSearch.refinements || [];
@@ -333,6 +339,33 @@ module.exports.render = function (context, modelIn) {
         Logger.error("Topsort auction failed: {0}", auctionResponse.error);
         return new Template('experience/components/dynamic/productList/productList.isml').render(model).text;
     }
+
+    var skippedProductIds = [];
+    var sponsoredTop = collections.reduce(new ArrayList(winners), function (acc, w) {
+        var product = ProductMgr.getProduct(w.id);
+        if (!product) {
+            skippedProductIds.push(w.id);
+            return acc;
+        }
+
+        var orig = collections.find(originalEntriesArrList, function (e) {
+            return e.productID === w.id;
+        });
+        if (orig) {
+            var sponsoredProduct = {};
+            topsortHelpers.assignObject(sponsoredProduct, orig);
+            sponsoredProduct.isSponsored = true;
+            sponsoredProduct.resolvedBidId = w.resolvedBidId;
+            acc.push(sponsoredProduct);
+            return acc;
+        }
+        acc.push({
+            productID:     w.id,
+            isSponsored:   true,
+            resolvedBidId: w.resolvedBidId
+        });
+        return acc;
+    }, []);
 
     if (skippedProductIds.length) {
         Logger.error("Product IDs were not found in the instance according to the Topsort response. These product will be skipped:\n {0}", skippedProductIds.join(", "));
