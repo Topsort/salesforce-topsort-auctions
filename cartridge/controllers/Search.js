@@ -24,8 +24,24 @@ server.extend(superSearch);
  *
  * @throws {Error} Logs an error message if the Topsort auction fails.
  */
-server.append("UpdateGrid", function (req, res, next) {
+server.append("ShowAjax", function (req, res, next) {
     var viewData               = res.getViewData();
+    // HITES renders Page Designer category pages via res.page() and returns before
+    // productSearch is set. There is nothing for the controller to do in that case
+    // (the productList PD component handles Topsort), so skip cleanly instead of
+    // dereferencing an undefined productSearch.
+    if (!viewData.productSearch) {
+        return next();
+    }
+    // Fail-open defaults: the template reads pdict.bannerWinners[...] and
+    // pdict.topsortTrackingEnabled near the top, so guarantee they always exist.
+    // Otherwise the refinement guard or an auction failure returns before these are
+    // set, pdict.bannerWinners is undefined, and the whole grid fails to render.
+    viewData.bannerWinners          = viewData.bannerWinners || {};
+    viewData.topsortTrackingEnabled = viewData.topsortTrackingEnabled || false;
+    // Provide the category id directly: pdict.request can be null in this render
+    // context, so the template must not dereference pdict.request.querystring.cgid.
+    viewData.topsortCategoryId      = (req.querystring && req.querystring.cgid) || "";
     var originalEntries        = viewData.productSearch.productIds || [];
     var originalEntriesArrList = new ArrayList(originalEntries);
     var productIDs             = collections.map(originalEntriesArrList, function (e) {
@@ -131,6 +147,8 @@ server.append("UpdateGrid", function (req, res, next) {
     var winners            = [];
     var resp               = null;
     var respResultsArrList = null;
+    // Request-local only: never mutate module-level topsortConfig (SFCC caches modules across requests).
+    var bannerWinners      = {};
 
     if (auctionResponse.success) {
         resp = auctionResponse.data;
@@ -149,13 +167,11 @@ server.append("UpdateGrid", function (req, res, next) {
 
                 if (auction.type === "banners" && result.resultType === "banners" && result.winners && result.winners.length > 0) {
                     var winner = result.winners[0];
-                    collections.forEach(topsortConfig, function (cfg) {
-                        if (cfg.slotId === auction.slotId) {
-                            cfg.winnerUrl = winner.asset && winner.asset[0] ? winner.asset[0].url : null;
-                            cfg.resolvedBidId = winner.resolvedBidId;
-                            cfg.redirectionUrl = winner.id;
-                        }
-                    });
+                    bannerWinners[auction.slotId] = {
+                        url: winner.asset && winner.asset[0] ? winner.asset[0].url : null,
+                        bidId: winner.resolvedBidId,
+                        redirectionUrl: winner.id
+                    };
                 }
             }
         }
@@ -198,16 +214,6 @@ server.append("UpdateGrid", function (req, res, next) {
     var productsWithSponsored = topsortHelpers.placeTheSponsoredProducts(sponsoredTop, originalEntries);
     viewData.productSearch.productIds = topsortHelpers.normalizeProductsToRowsOfFour(productsWithSponsored);
 
-    var bannerWinners = {};
-    collections.forEach(topsortConfig, function (cfg) {
-        if (cfg.winnerUrl) {
-            bannerWinners[cfg.slotId] = {
-                url: cfg.winnerUrl,
-                bidId: cfg.resolvedBidId,
-                redirectionUrl: cfg.redirectionUrl
-            };
-        }
-    });
     viewData.bannerWinners = bannerWinners;
 
     var clientConfig = TopsortService.getClientConfig();
@@ -222,6 +228,22 @@ server.append("UpdateGrid", function (req, res, next) {
 
 server.append("Show", function (req, res, next) {
     var viewData               = res.getViewData();
+    // HITES renders Page Designer category pages via res.page() and returns before
+    // productSearch is set. There is nothing for the controller to do in that case
+    // (the productList PD component handles Topsort), so skip cleanly instead of
+    // dereferencing an undefined productSearch.
+    if (!viewData.productSearch) {
+        return next();
+    }
+    // Fail-open defaults: the template reads pdict.bannerWinners[...] and
+    // pdict.topsortTrackingEnabled near the top, so guarantee they always exist.
+    // Otherwise the refinement guard or an auction failure returns before these are
+    // set, pdict.bannerWinners is undefined, and the whole grid fails to render.
+    viewData.bannerWinners          = viewData.bannerWinners || {};
+    viewData.topsortTrackingEnabled = viewData.topsortTrackingEnabled || false;
+    // Provide the category id directly: pdict.request can be null in this render
+    // context, so the template must not dereference pdict.request.querystring.cgid.
+    viewData.topsortCategoryId      = (req.querystring && req.querystring.cgid) || "";
     var originalEntries        = viewData.productSearch.productIds || [];
     var originalEntriesArrList = new ArrayList(originalEntries);
     var productIDs             = collections.map(originalEntriesArrList, function (e) {
@@ -327,6 +349,8 @@ server.append("Show", function (req, res, next) {
     var winners            = [];
     var resp               = null;
     var respResultsArrList = null;
+    // Request-local only: never mutate module-level topsortConfig (SFCC caches modules across requests).
+    var bannerWinners      = {};
 
     if (auctionResponse.success) {
         resp = auctionResponse.data;
@@ -345,13 +369,11 @@ server.append("Show", function (req, res, next) {
 
                 if (auction.type === "banners" && result.resultType === "banners" && result.winners && result.winners.length > 0) {
                     var winner = result.winners[0];
-                    collections.forEach(topsortConfig, function (cfg) {
-                        if (cfg.slotId === auction.slotId) {
-                            cfg.winnerUrl = winner.asset && winner.asset[0] ? winner.asset[0].url : null;
-                            cfg.resolvedBidId = winner.resolvedBidId;
-                            cfg.redirectionUrl = winner.id;
-                        }
-                    });
+                    bannerWinners[auction.slotId] = {
+                        url: winner.asset && winner.asset[0] ? winner.asset[0].url : null,
+                        bidId: winner.resolvedBidId,
+                        redirectionUrl: winner.id
+                    };
                 }
             }
         }
@@ -394,16 +416,6 @@ server.append("Show", function (req, res, next) {
     var productsWithSponsored = topsortHelpers.placeTheSponsoredProducts(sponsoredTop, originalEntries);
     viewData.productSearch.productIds = topsortHelpers.normalizeProductsToRowsOfFour(productsWithSponsored);
 
-    var bannerWinners = {};
-    collections.forEach(topsortConfig, function (cfg) {
-        if (cfg.winnerUrl) {
-            bannerWinners[cfg.slotId] = {
-                url: cfg.winnerUrl,
-                bidId: cfg.resolvedBidId,
-                redirectionUrl: cfg.redirectionUrl
-            };
-        }
-    });
     viewData.bannerWinners = bannerWinners;
 
     var clientConfig = TopsortService.getClientConfig();
