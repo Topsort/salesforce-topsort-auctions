@@ -1,0 +1,280 @@
+<section id="main" class="catalog__body">
+    <div class="plp-hero-banner-slot">
+        <isslot id="plp-hero-banner" description="Content slot for full-width banner" context="global" />
+    </div>
+
+    <div class="container">
+        <isset name="productsNotEmpty" value="${pdict.productSearch.productIds.length > 0}" scope="page" />
+        <isset name="contentsNotEmpty" value="${pdict.contentSearch.contents.length > 0}" scope="page" />
+        <isset name="hideSidebar" value="${pdict.category && pdict.category.custom.viewMode && (pdict.category.custom.viewMode == "grid3NoSidebar" || pdict.category.custom.viewMode == "grid4NoSidebar")}" scope="page" />
+        <isset name="listView" value="${pdict.category && pdict.category.custom.productsViewMode && pdict.category.custom.productsViewMode == "list"}" scope="page" />
+        <isset name="grid4" value="${hideSidebar && pdict.category.custom.viewMode == "grid4NoSidebar"}" scope="page" />
+        
+        <input type="hidden" id="hiddenSidebar" name="hideSidebar" value="${hideSidebar}"/>
+        <input type="hidden" name="grid4" value="${grid4}"/>
+        
+        <isif condition="${pdict.reportingURLs && pdict.reportingURLs.length}">
+            <isinclude template="reporting/reportingUrls" />
+        </isif>
+        <input type="hidden" id="isPLP" value="true" />
+
+		<isif condition="${pdict.yotpoWidgetData && pdict.yotpoWidgetData.isRatingsEnabled}">
+			<!--- Yotpo Ratings Widget --->
+			<div id="yotpo-bottomline-top-div" class="yotpo bottomLine"
+				data-appkey="${pdict.yotpoWidgetData.yotpoAppKey}"
+				data-domain="${pdict.yotpoWidgetData.domainAddress}"
+				data-product-id="${pdict.yotpoWidgetData.productID}"
+				data-product-models="${pdict.yotpoWidgetData.model}"
+				data-name="${pdict.yotpoWidgetData.productName}"
+				data-url="${pdict.yotpoWidgetData.productURL}"
+				data-image-url="${pdict.yotpoWidgetData.imageURL}"
+				data-description="${pdict.yotpoWidgetData.productDesc}"
+				data-bread-crumbs="${pdict.yotpoWidgetData.productCategory}">
+			</div>
+			<!--- //////////////////// --->
+		</isif>
+
+        <div class="search__top">
+            <!---Breadcrumbs--->
+            <nav aria-label="breadcrumb">
+                <isinclude template="components/breadcrumbs/pageBreadcrumbs"/>
+            </nav>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="box box__card ${(contentsNotEmpty && !productsNotEmpty) ? 'hidden' : ''}" id="product-search-results">
+            <div class="row">
+                <isif condition="${productsNotEmpty}">
+                    <div class="container">
+                        <iscontentasset aid="product-search-results-header"/>
+                    </div>
+                    <div class="col-12 ${hideSidebar ? "d-none" : "col-lg-3"}">
+                        <div class="product-filters-wrapper">
+                            <div class="products-filters-header">
+                                <isif condition="${pdict.productSearch.isCategorySearch}">
+                                    <span class="h4 m-0 text-uppercase">${pdict.parentCategoryName}</span>
+                                    <h1 class="h3 truncate-2-lines" role="heading" arial-level="1">${pdict.productSearch.category.name}  <isif condition="${pdict.productSearch.refinedH1.length > 0}"> | ${pdict.productSearch.refinedH1}</isif></h1>
+                                    <isactivedatacontext category="${pdict.productSearch.category}" />
+                                </isif>
+                                <span class="product-results-count"><b>${Resource.msgf('label.results.count.total', 'search', null,pdict.paging.totalCount)}</b>${Resource.msg('label.results.count.text', 'search', null)}</span>
+                            </div>
+                            <isif condition="${pdict.productSearch.productIds.length > 0}">
+                                <!-- Refinement bar -->
+                                <div class="d-none d-lg-block">
+                                    <isinclude url="${pdict.refineurl}"/>
+                                    <iscomment> TOPSORT CATEGORY SIDE </iscomment>
+                                    <isset name="categorySideBanner" value="${pdict.bannerWinners ? pdict.bannerWinners['category-side'] : null}" scope="page" />
+                                    <isif condition="${categorySideBanner && categorySideBanner.url}">
+                                        <div id="featured-content-category-side" class="refinement-bar__banner" style="padding: 1rem 0;">
+                                            <a href="${categorySideBanner.redirectionUrl}" target="_blank" rel="noopener">
+                                                <img src="${categorySideBanner.url}" alt="Category Banner" style="width: 100%; border-radius: 12px;" />
+                                            </a>
+                                        </div>
+                                        <isif condition="${categorySideBanner.bidId}">
+                                            <script>
+                                            if (window.ProductEngagement) {
+                                                ProductEngagement.setupContentTracking({
+                                                    elementId: 'featured-content-category-side',
+                                                    userId: '${pdict.tsuid || ""}',
+                                                    position: 2,
+                                                    page: ${pdict.productSearch.page || 1},
+                                                    pageSize: ${pdict.productSearch.hitsPerPage || 12},
+                                                    categoryId: '${pdict.topsortCategoryId || ""}',
+                                                    resolvedBidId: '${categorySideBanner.bidId || ""}'
+                                                });
+                                            }
+                                            </script>
+                                        </isif>
+                                    </isif>
+                                    <iscomment> END TOPSORT CATEGORY SIDE </iscomment>
+                                </div>
+                            </isif>
+                            <div class="filter-espot-wrapper"></div>
+                        </div>
+                        <div class="plp-left-slot-wrapper d-none d-lg-block">
+                            <div class="row no-margins">
+                                <div class="col-12 no-paddings">
+                                    <isslot id="plp-left-slot-one" description="Content slot one to display below refinements" context="category" context-object="${pdict.category}" />
+                                </div>
+                            </div>
+                            <div class="row no-margins">
+                                <div class="col-12 no-paddings">
+                                    <isslot id="plp-left-slot-two" description="Content slot two to display below refinements" context="category" context-object="${pdict.category}" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 ${hideSidebar ? "" : "col-lg-9"} product-grid pt-0" id="product-list">
+						<isif condition="${hideSidebar}">
+                            <div class="row category-title-wrapper px-3${hideSidebar ? "" : "d-none"}">
+                                <div class="products-filters-header col-12 col-lg-3">
+                                    <isif condition="${pdict.productSearch.isCategorySearch}">
+                                        <span class="h4 m-0 text-uppercase">${pdict.parentCategoryName}</span>
+                                        <h1 class="h3 truncate-2-lines" role="heading" arial-level="1">${pdict.productSearch.category.name}  <isif condition="${pdict.productSearch.refinedH1.length > 0}"> | ${pdict.productSearch.refinedH1}</isif></h1>
+                                    </isif>
+                                    <span class="product-results-count"><b>${Resource.msgf('label.results.count.total', 'search', null,pdict.paging.totalCount)}</b>${Resource.msg('label.results.count.text', 'search', null)}</span>
+                                </div>
+                                <div class="col-12 col-lg-9">
+                                    <isslot id="plp-primary-banner" description="Content slot for first banner (same width as product results)" context="category" context-object="${pdict.category}" />
+                                    <isslot id="plp-secondary-banner" description="Content slot for banner (same width as product results)" context="category" context-object="${pdict.category}" />
+                                    <isslot id="plp-third-banner" description="Content slot for third banner (same width as product results)" context="category" context-object="${pdict.category}" />
+                                </div>
+                            </div>                
+                        </isif>
+                        <isif condition="${pdict.marketplace}">
+							<div class="col-12 row marketplace-container">
+								<div class="col-3 col-lg-2 pl-0 align-self-center">
+									<img class="img-fluid" src="${pdict.marketplace.imgUrl}" alt="${pdict.marketplace.name}">
+								</div>
+								<div class="col-9 col-lg-10 row flex-column justify-content-start">
+									<h1 class="marketplace-name">${pdict.marketplace.name}</h1>
+									<div class="collapse row flex-column justify-content-start pl-3" id="marketplaceCollapse" aria-expanded="false">
+										<span class="marketplace-rut">${Resource.msg('searchResults.marketplace.rut.label', 'search', null)} ${pdict.marketplace.rut}</span>
+                                        <span class="marketplace-razonSocial">${Resource.msg('searchResults.marketplace.razonSocial.label', 'search', null)} ${pdict.marketplace.razonSocial}</span>
+										<span class="marketplace-address">${Resource.msg('searchResults.marketplace.address.label', 'search', null)} ${pdict.marketplace.address}</span>
+										<span class="marketplace-legal-representative">${Resource.msg('searchResults.marketplace.legalrepresentative.label', 'search', null)} ${pdict.marketplace.legalRepresentative}</span>
+									</div>
+									<a role="button" class="collapsed collapse-button" data-toggle="collapse" href="#marketplaceCollapse" aria-expanded="false" aria-controls="marketplaceCollapse"></a>
+								</div>
+							</div>
+						</isif>
+                        <isif condition="${!hideSidebar}">
+                            <isslot id="plp-primary-banner" description="Content slot for first banner (same width as product results)" context="category" context-object="${pdict.category}" />
+                            <isslot id="plp-secondary-banner" description="Content slot for banner (same width as product results)" context="category" context-object="${pdict.category}" />
+                            <isslot id="plp-third-banner" description="Content slot for third banner (same width as product results)" context="category" context-object="${pdict.category}" />
+                        </isif>
+                        <div class="grid-filters grid-filters-fixed new-grid-filters new-grid-filters-fixed d-none ${hideSidebar ? "" : "d-lg-none"}">
+                            <div class="grid-filters-container js-grid-filters-fixed">
+                                <div class="filter-col d-flex filter-by filter-modal-container ${hideSidebar ? "" : "d-lg-none"}">
+                                    <div class="d-flex d-lg-none filter-grid js-filter-btn">
+                                        <svg class="icon icon-filter"><use xlink:href="#filter-icon"></use></svg>
+                                        <p class="filter-lbl order-lbl text-uppercase no-margins">${Resource.msg('label.control.filter', 'search', null)}</p>
+                                    </div>
+                                    <isinclude url="${pdict.refineurl}"/>
+                                </div>
+
+                                <div class="filter-col d-flex order-by">
+                                    <label class="filter-label" for="order-by">${Resource.msg('label.control.sortby', 'search', null)}</label>
+                                    <isinclude template="search/sortOrderMenu" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <isif condition="${hideSidebar}">
+                            <div class="grid-filters grid-filters-fixed-desktop new-grid-filters d-none">
+                                <div class="filters-fixed-desktop">
+                                    <div class="products-filters-header">
+                                        <isif condition="${pdict.productSearch.isCategorySearch}">
+                                            <h1 class="h3 truncate-2-lines" role="heading" arial-level="1">${pdict.productSearch.category.name}  <isif condition="${pdict.productSearch.refinedH1.length > 0}"> | ${pdict.productSearch.refinedH1}</isif></h1>
+                                        </isif>
+                                        <span class="product-results-count"><b>${Resource.msgf('label.results.count.total', 'search', null,pdict.paging.totalCount)}</b>${Resource.msg('label.results.count.text', 'search', null)}</span>
+                                    </div>
+                                    <div class="filter-col d-flex filter-grid js-filter-btn">
+                                        <svg class="icon icon-filter"><use xlink:href="#filter-icon"></use></svg>
+                                        <p class="filter-lbl order-lbl no-margins">${Resource.msg('label.control.filter', 'search', null)}</p>
+                                    </div>
+                                </div>
+
+                                <div class="filter-col d-flex order-by">
+                                    <label class="filter-label d-none d-lg-block" for="order-by">${Resource.msg('label.control.sortby', 'search', null)}</label>
+                                    <isinclude template="search/sortOrderMenu" />
+                                </div>
+
+                                <div class="filter-col d-none d-lg-flex pagination">
+                                    <isinclude template="search/components/pagination" />
+                                </div>
+                            </div>
+                        </isif>
+
+                        <div class="grid-filters grid-filters-static new-grid-filters">
+                            <div class="filter-col d-flex ${hideSidebar ? "" : "d-lg-none"} filter-grid js-filter-btn">
+                                <svg class="icon icon-filter"><use xlink:href="#filter-icon"></use></svg>
+                                <p class="filter-lbl order-lbl text-uppercase no-margins">${Resource.msg('label.control.filter', 'search', null)}</p>
+                            </div>
+
+                            <div class="filter-col d-flex order-by">
+                                <label class="filter-label d-none d-lg-block" for="order-by">${Resource.msg('label.control.sortby', 'search', null)}</label>
+                                <isinclude template="search/sortOrderMenu" />
+                            </div>
+
+                            <div class="filter-col d-none d-lg-flex pagination">
+                                <isinclude template="search/components/pagination" />
+                            </div>
+                        </div>
+
+                        <iscomment> TOPSORT CATEGORY TOP </iscomment>
+                        <isset name="categoryTopBanner" value="${pdict.bannerWinners ? pdict.bannerWinners['category-top'] : null}" scope="page" />
+                        <isif condition="${categoryTopBanner && categoryTopBanner.url}">
+                            <div id="featured-content-category-top" class="featured-content-container" style="margin-top: 1rem;">
+                                <a href="${categoryTopBanner.redirectionUrl}" target="_blank" rel="noopener">
+                                    <img src="${categoryTopBanner.url}" alt="Featured Content" style="width: 100%; border-radius: 12px;" />
+                                </a>
+                            </div>
+                            <isif condition="${categoryTopBanner.bidId}">
+                                <script>
+                                if (window.ProductEngagement) {
+                                    ProductEngagement.setupContentTracking({
+                                        elementId: 'featured-content-category-top',
+                                        userId: '${pdict.tsuid || ""}',
+                                        position: 4,
+                                        page: ${pdict.productSearch.page || 1},
+                                        pageSize: ${pdict.productSearch.hitsPerPage || 12},
+                                        categoryId: '${pdict.topsortCategoryId || ""}',
+                                        resolvedBidId: '${categoryTopBanner.bidId || ""}'
+                                    });
+                                }
+                                </script>
+                            </isif>
+                        </isif>
+                        <iscomment> END TOPSORT CATEGORY TOP </iscomment>
+
+                        <!--- Product Grid --->
+                        <input type="hidden" name="viewmode" value="${listView}"/>
+                        <div class="row px-3 ${listView ? "list-view" : "grid-view"} product-view loading" id="productRow">
+                            <isinclude template="experience/components/dynamic/productList/productGrid_hites" />
+                        </div>
+
+                        <div class="bottom-placeholder">
+                            <isinclude template="search/components/pagination" />
+                        </div>
+
+                        <iscomment> TOPSORT CATEGORY BOTTOM </iscomment>
+                        <isset name="categoryBottomBanner" value="${pdict.bannerWinners ? pdict.bannerWinners['category-bottom'] : null}" scope="page" />
+                        <isif condition="${categoryBottomBanner && categoryBottomBanner.url}">
+                            <div id="featured-content-category-bottom" class="featured-content-container" style="margin-top: 1rem;">
+                                <a href="${categoryBottomBanner.redirectionUrl}" target="_blank" rel="noopener">
+                                    <img src="${categoryBottomBanner.url}" alt="Featured Content" style="width: 100%; border-radius: 12px;" />
+                                </a>
+                            </div>
+                            <isif condition="${categoryBottomBanner.bidId}">
+                                <script>
+                                if (window.ProductEngagement) {
+                                    ProductEngagement.setupContentTracking({
+                                        elementId: 'featured-content-category-bottom',
+                                        userId: '${pdict.tsuid || ""}',
+                                        position: 1,
+                                        page: ${pdict.productSearch.page || 1},
+                                        pageSize: ${pdict.productSearch.hitsPerPage || 12},
+                                        categoryId: '${pdict.topsortCategoryId || ""}',
+                                        resolvedBidId: '${categoryBottomBanner.bidId || ""}'
+                                    });
+                                }
+                                </script>
+                            </isif>
+                        </isif>
+                        <iscomment> END TOPSORT CATEGORY BOTTOM </iscomment>
+
+                        <isslot id="plp-footer-secondary-banner" description="Content slot for banner to display below pagination" context="category" context-object="${pdict.category}" />
+                    </div>
+                <iselse/>
+                    <isinclude template="search/components/emptyResults" />
+                </isif>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-8">
+        <isslot id="plp-footer-banner" description="Content slot for full-width banner to display below product grid/list" context="global" />
+    </div>
+</section>

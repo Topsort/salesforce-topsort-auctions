@@ -1,0 +1,141 @@
+<isset name="isProductOOS" value="${(!product.available && !product.ats) || !product.safetyPriceAvailability || !product.normalPriceAvailability || !product.readyToOrder} " scope="page" />
+<isset name="hideSelectShippingMethod" value="true" scope="page" />
+
+<div class="product-tile h-100 js-product-tile-container ${isProductOOS ? 'oos-tile' : ''}" data-gtmselectitem="${require('int_viseo_gtm').ga4SelectItem('select_item', product.id)}" data-ga4="" data-url="${URLUtils.url('Product-Variation', 'pid', product.id)}" data-pid="${product.id}">
+    <!-- dwMarker="product" dwContentID="${product.uuid}" -->
+    <div class="product-tile-image-container">
+        
+        <iscomment> <isif condition="${pdict.display.infoTop !== false}">
+            <isinclude template="product/components/productTileNameCat" />
+        </isif> </iscomment>
+        
+        <isinclude template="product/components/productTileImage" />
+
+        <isif condition="${pdict.display.badges !== false}">
+            <isinclude template="product/components/productTileBadges" />
+        </isif>
+    </div>
+
+    <div class="product-tile-body">
+        <div class="tile-section info-section-product">
+            <div class="tile-half description-section">
+                <isinclude template="product/components/productTileName" />
+            </div>
+        </div>
+
+        <div class="tile-section attribute-section-product">
+            <div class="list-left-section">
+                <isif condition="${pdict.display.attributeMain}">
+                    <div class="attributes-section">
+                        <isinclude template="product/components/productTileAttributes" />
+                    </div>
+                </isif>
+            </div>
+
+            <div class="list-bottom-section">
+                <div class="info-bottom-section">
+                    <div class="tile-half price-section pr-1">
+                        <div class="oos-tags ${isProductOOS ? '' : 'd-none'}">
+                            <div class="price tag">
+                                <div class="product-tags">
+                                    <span class="tag-item outofstock">${Resource.msg('product.tag.outofstock', 'product', null)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    <div class="availability-secondary-message">
+                        <isif condition="${product.availability && product.availability.secondaryMessage}" >
+                            ${product.availability.secondaryMessage}
+                        </isif>
+                    </div>
+
+                    <div class="${isProductOOS ? "d-none" : ""}">
+                        <div class="prices-section">
+                            <isset name="price" value="${product.price}" scope="page" />
+                            <isif condition="${product.productType === 'set'}">
+                                <isinclude template="product/components/pricing/setPrice" />
+                            <iselse/>
+                                <isinclude template="product/components/pricing/main" />
+                            </isif>
+                        </div>
+                        <isif condition="${pdict.isSponsored === true}">
+                            <span class="topsort-sponsored-label">Patrocinado</span>
+                        </isif>
+                    </div>
+                </div>
+                    <isif condition="${pdict.yotpoWidgetData && pdict.yotpoWidgetData.isRatingsEnabled}">
+                        <div class="stars-section-grid top-stars">
+                                <isinclude template="product/components/yotpoTileStars" />
+                        </div>
+                    </isif>
+                    <div class="tile-half variations-buy-section">
+                        <isif condition="${pdict.display.swatches !== false}">
+                            <div class="variations-section">
+                                <isset name="isBundle" value="${false}" scope="page" />
+                                <isset name="loopState" value="{count: 1}" scope="page" />
+                                <isloop items="${product.variationAttributes}" var="attr" status="attributeStatus">
+                                    <isinclude template="product/components/tileVariationAttribute" />
+                                </isloop>
+                            </div>
+                        </isif>
+
+                        <div class="btn-buy-section ${pdict.display.addToCartButton ? "" : "d-none"}">
+                            <isinclude template="product/components/productTileBuyButton" />
+
+                            <a class="link goto-product" href="${pdict.urls.product}" data-gtm="${require('int_viseo_gtm').ga4ProductName(product.id)}">${Resource.msg("pdp.recommendations.goto", "product", null)}</a>
+                        </div>
+                    </div>
+                </div>
+
+                    <iscomment> Product options </iscomment>
+                <div class="d-none options-div">
+                    <isif condition="${product.options && product.options.length > 0}">
+                        <div class="col-12 product-warranty">
+                            <isinclude template="product/components/optionsWarrantyTile" />
+                        </div>
+
+                        <isif condition="${!empty(product.custom.warrantyModalContentAssetID)}">
+                            <div class="d-none warranty-modal-content-asset">
+                                <iscontentasset aid="${product.custom.warrantyModalContentAssetID}" />
+                            </div>
+                        </isif>
+                        <isif condition="${!empty(product.custom.optionModalContentAssetID)}">
+                            <div class="d-none option-modal-content-asset">
+                                <iscontentasset aid="${product.custom.optionModalContentAssetID}" />
+                            </div>
+                        </isif>
+                    </isif>
+                    <iscomment> <div class="col">
+                        <isinclude template="product/components/returns" />
+                    </div> </iscomment>
+                </div>
+
+                <div class="tile-half list-bottom-left">
+                    <div class="yotpo-stars-and-shipping-section">
+                        <isif condition="${pdict.yotpoWidgetData && pdict.yotpoWidgetData.isRatingsEnabled}">
+                            <div class="stars-section-list bottom-stars">
+                                <isinclude template="product/components/yotpoTileStars" />
+                            </div>
+                        </isif>
+                        <div class="shipping-compare-section">
+                            <div class="shipping-section">
+                                <isinclude url="${URLUtils.url("Tile-ShowShippingMethods", "pid", product.id)}" sf-toolkit="on" />
+                            </div>
+                            <isif condition="${pdict.yotpoWidgetData && pdict.yotpoWidgetData.isRatingsEnabled}">
+                                <div class="stars-section-grid bottom-stars">
+                                    <div class="stars-grid-wrapper">    
+                                        <isinclude template="product/components/yotpoTileStars" />
+                                    </div>
+                                </div>
+                            </isif>
+                            <div class="compare-section">
+                                <isinclude template="product/productTileFooter" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- END_dwmarker -->
+</div>

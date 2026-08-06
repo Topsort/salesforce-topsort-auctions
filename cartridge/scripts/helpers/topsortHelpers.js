@@ -50,6 +50,25 @@ function placeTheSponsoredProducts(sponsoredTop, originalEntries) {
     // HERE: logic to place the winners in the correct positions
     // modify this to place the winners in custom positions
 
+    // A winning product cloned into sponsoredTop may also still be present in the
+    // organic results. Drop the organic occurrence so each sponsored product is shown
+    // once (in its sponsored slot) instead of being duplicated in the grid.
+    var sponsoredIds = {};
+    for (var s = 0; s < sponsoredTop.length; s++) {
+        if (sponsoredTop[s] && sponsoredTop[s].productID) {
+            sponsoredIds[sponsoredTop[s].productID] = true;
+        }
+    }
+    var dedupedEntries = [];
+    for (var e = 0; e < originalEntries.length; e++) {
+        var entry = originalEntries[e];
+        if (entry && entry.productID && sponsoredIds[entry.productID]) {
+            continue;
+        }
+        dedupedEntries.push(entry);
+    }
+    originalEntries = dedupedEntries;
+
     // Place first 2 winners at positions 0,1
     var firstTwoWinners = sponsoredTop.slice(0, 2);
     var entriesWithFirstWinners = originalEntries;

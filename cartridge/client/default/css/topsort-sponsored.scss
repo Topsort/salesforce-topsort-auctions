@@ -1,0 +1,15 @@
+.topsort-sponsored-label {
+    display: block;
+    margin-top: 4px;
+    padding-right: 4px;
+    font-size: 11px;
+    line-height: 1.2;
+    color: #9e9e9e;
+    text-align: right;
+}
+
+.grid-view .product-tile .tile-half.price-section .topsort-sponsored-label {
+    @media (min-width: 576px) {
+        padding-right: 8px;
+    }
+}

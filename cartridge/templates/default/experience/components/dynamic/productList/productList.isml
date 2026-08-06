@@ -1,0 +1,51 @@
+<isscript>
+    var assets = require('*/cartridge/scripts/assets');
+    assets.addJs('/js/search.js');
+    assets.addJs('/js/recommendedProducts.js');
+    assets.addJs('/js/productTile.js');
+    assets.addCss('/css/search.css');
+    assets.addCss('/css/topsort-sponsored.css');
+    assets.addSvg('/icons/svg-icons.svg');
+</isscript>
+
+<iscomment> TOPSORT: tracking library + init (model fields are set by the topsort_auctions_custom PD component; guards keep this a no-op when Topsort is disabled or absent) </iscomment>
+<isif condition="${pdict.topsortTrackingEnabled}">
+    <script src="${URLUtils.staticURL('/js/product-engagement.js')}"></script>
+    <script>
+        if (window.ProductEngagement) {
+            ProductEngagement.init({
+                apiURL: '${pdict.topsortApiURL}',
+                apiKey: '${pdict.topsortApiKey}',
+                trackingEnabled: ${pdict.topsortTrackingEnabled}
+            });
+        }
+    </script>
+</isif>
+<iscomment> END TOPSORT </iscomment>
+
+<isif condition="${pdict.schemaData}">
+    <div style="display:none">
+                <script type="application/ld+json">
+                    <isprint value="${JSON.stringify(pdict.schemaData)}" encoding="off" />
+                </script>
+    </div>
+</isif>
+                 
+    <isif condition="${false}">
+        <isslot id="plp-hero-banner" description="Content slot for full-width banner" context="global" />
+        <isslot id="plp-primary-banner" description="Content slot for first banner (same width as product results)" context="category" context-object="${pdict.category}" />
+        <isslot id="plp-secondary-banner" description="Content slot for banner (same width as product results)" context="category" context-object="${pdict.category}" />
+        <isslot id="plp-third-banner" description="Content slot for third banner (same width as product results)" context="category" context-object="${pdict.category}" />
+        <isslot id="plp-footer-secondary-banner" description="Content slot for banner to display below pagination" context="category" context-object="${pdict.category}" />
+        <isslot id="plp-footer-banner" description="Content slot for full-width banner to display below product grid/list" context="global" />
+        <isslot id="plp-left-slot-one" description="Content slot one to display below refinements" context="category" context-object="${pdict.category}" />
+        <isslot id="plp-left-slot-two" description="Content slot two to display below refinements" context="category" context-object="${pdict.category}" />
+    </isif>
+
+    <input type="hidden" id="defaultViewMode" value="${pdict.defaultViewMode || ""}" />
+	<iscomment> GA4 to be triggered when plp shows </iscomment>
+	<isif condition="${!empty(pdict.ga4PLPData)}">
+		<input type="hidden" value="${pdict.ga4PLPData}" id="plp-ga4-data">
+	</isif>
+    <isinclude template="experience/components/dynamic/productList/categoryResults" />
+    <isinclude template="product/compareBar" />
