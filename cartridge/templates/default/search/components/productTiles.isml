@@ -1,13 +1,6 @@
 <isloop items="${pdict.productSearch.productIds}" status="tilesLoop" var="product">
-    <div id="tile-${product.productID}" class="col-6 col-sm-4" data-product-position="${tilesLoop.index}" data-product-type="${!product.isSponsored ? product.productSearchHit.hitType : ""}">
+    <div id="tile-${product.productID}" class="col-6 ${(typeof grid4 != 'undefined' && grid4) ? "col-lg-3" : "col-lg-4"} px-0" data-product-position="${tilesLoop.index}" data-product-type="${!product.isSponsored ? product.productSearchHit.hitType : ""}">
             <isif condition="${product.isSponsored === true}">
-            <div class="featured-item-label">
-                <isscript>
-                    // Localization can optionally be used here
-                    // var featuredText = Resource.msg('label.product.featured', 'product', null);
-                </isscript>
-                Featured
-            </div>
             <script>
                 if (window.ProductEngagement) {
                     var querystring = '${pdict.queryString}';
@@ -28,7 +21,11 @@
             </script>
         </isif>
         <isobject object="${product.productSearchHit}" view="searchhit">
-            <isinclude url="${URLUtils.url('Tile-Show', 'pid', product.productID, 'swatches', true, 'ratings', true, 'isSponsored', product.isSponsored)}" />
+            <isif condition="${pdict.productSearch.category}">
+                <isinclude url="${URLUtils.url('Tile-Show', 'pid', product.productID, 'swatches', true, 'ratings', true, 'cgid', pdict.productSearch.category.id, 'compare', pdict.compareEnabled, 'addToCartButton', true, 'attributeMain', true, 'isSponsored', product.isSponsored)}" />
+            <iselse/>
+                <isinclude url="${URLUtils.url('Tile-Show', 'pid', product.productID, 'swatches', true, 'ratings', true, 'compare', false, 'addToCartButton', true, 'attributeMain', true, 'isSponsored', product.isSponsored)}" />
+            </isif>
         </isobject>
     </div>
 </isloop>
