@@ -5,10 +5,6 @@ var Template = require('dw/util/Template');
 var HashMap = require('dw/util/HashMap');
 var PageRenderHelper = require('*/cartridge/experience/utilities/PageRenderHelper.js');
 
-var collections    = require("*/cartridge/scripts/util/collections");
-var ArrayList      = require("dw/util/ArrayList");
-var topsortConfig  = new ArrayList(require("*/cartridge/scripts/config/topsort_banners.json"));
-
 
 
 /**
@@ -75,18 +71,10 @@ module.exports.render = function (context, modelIn) {
         model.yotpoLoyaltySDKURL = params.yotpoLoyaltySDKURL;
     }
 
-    //Topsort banners
-    var bannerWinners = {};
-    collections.forEach(topsortConfig, function (cfg) {
-        if (cfg.winnerUrl) {
-            bannerWinners[cfg.slotId] = {
-                url: cfg.winnerUrl,
-                bidId: cfg.resolvedBidId,
-                redirectionUrl: cfg.redirectionUrl
-            };
-        }
-    });
-    model.bannerWinners = bannerWinners;
+    // Banner winners are resolved by the productList PD component for this request.
+    // Do not read from module-level topsortConfig: SFCC caches modules and that pattern
+    // leaked winners across requests. Default empty so templates fail open.
+    model.bannerWinners = {};
     // render the page
     return new Template('experience/pages/threeRowStorePage').render(model).text;
 };

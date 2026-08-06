@@ -85,13 +85,11 @@ function placeTheSponsoredProducts(sponsoredTop, originalEntries) {
             .concat(entriesWithFirstWinners.slice(6));
     }
 
-    // Place last 2 winners at second-to-last and last positions
+    // Place last 2 winners at second-to-last and last positions (replace, do not append)
     var lastTwoWinners = sponsoredTop.slice(4, 6);
     var finalEntries = entriesWithMiddleWinners;
     if (lastTwoWinners.length > 0) {
-        finalEntries = entriesWithMiddleWinners.slice(0, -2)
-            .concat(entriesWithMiddleWinners.slice(-2, entriesWithMiddleWinners.length))
-            .concat(lastTwoWinners);
+        finalEntries = entriesWithMiddleWinners.slice(0, -2).concat(lastTwoWinners);
     }
 
     return finalEntries;

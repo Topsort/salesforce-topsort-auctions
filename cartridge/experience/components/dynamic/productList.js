@@ -307,6 +307,8 @@ module.exports.render = function (context, modelIn) {
     var winners            = [];
     var resp               = null;
     var respResultsArrList = null;
+    // Request-local only: never mutate module-level topsortConfig (SFCC caches modules across requests).
+    var bannerWinners      = {};
 
     if (auctionResponse.success) {
         resp = auctionResponse.data;
@@ -325,13 +327,11 @@ module.exports.render = function (context, modelIn) {
 
                 if (auction.type === "banners" && result.resultType === "banners" && result.winners && result.winners.length > 0) {
                     var winner = result.winners[0];
-                    collections.forEach(topsortConfig, function (cfg) {
-                        if (cfg.slotId === auction.slotId) {
-                            cfg.winnerUrl = winner.asset && winner.asset[0] ? winner.asset[0].url : null;
-                            cfg.resolvedBidId = winner.resolvedBidId;
-                            cfg.redirectionUrl = winner.id;
-                        }
-                    });
+                    bannerWinners[auction.slotId] = {
+                        url: winner.asset && winner.asset[0] ? winner.asset[0].url : null,
+                        bidId: winner.resolvedBidId,
+                        redirectionUrl: winner.id
+                    };
                 }
             }
         }
@@ -373,17 +373,6 @@ module.exports.render = function (context, modelIn) {
 
     var productsWithSponsored = topsortHelpers.placeTheSponsoredProducts(sponsoredTop, originalEntries);
     model.productSearch.productIds = topsortHelpers.normalizeProductsToRowsOfFour(productsWithSponsored);
-    
-    var bannerWinners = {};
-    collections.forEach(topsortConfig, function (cfg) {
-        if (cfg.winnerUrl) {
-            bannerWinners[cfg.slotId] = {
-                url: cfg.winnerUrl,
-                bidId: cfg.resolvedBidId,
-                redirectionUrl: cfg.redirectionUrl
-            };
-        }
-    });
 
     model.bannerWinners = bannerWinners;
 
