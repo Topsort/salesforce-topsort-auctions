@@ -1,3 +1,15 @@
+<iscomment> Category PLPs do not use searchResultsNoDecorator; init tracking here so it runs on search and category grids. </iscomment>
+<script src="${URLUtils.staticURL('/js/product-engagement.js')}"></script>
+<script>
+    if (window.ProductEngagement) {
+        ProductEngagement.init({
+            apiURL: '${pdict.topsortApiURL}',
+            apiKey: '${pdict.topsortApiKey}',
+            trackingEnabled: ${pdict.topsortTrackingEnabled ? true : false}
+        });
+    }
+</script>
+
 <isloop items="${pdict.productSearch.productIds}" status="tilesLoop" var="product">
     <div id="tile-${product.productID}" class="col-6 col-sm-4" data-product-position="${tilesLoop.index}" data-product-type="${!product.isSponsored ? product.productSearchHit.hitType : ""}">
             <isif condition="${product.isSponsored === true}">

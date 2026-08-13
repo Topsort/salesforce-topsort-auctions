@@ -50,13 +50,13 @@ window.ProductEngagement = (function() {
     function sendEvent(eventData, options) {
         if (!config.trackingEnabled || !config.apiURL || !config.apiKey) {
             console.warn('Product engagement not properly configured');
-            return;
+            return Promise.resolve();
         }
 
         var opts = options || {};
         var url = config.apiURL + '/v2/events';
 
-        fetch(url, {
+        return fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -107,7 +107,7 @@ window.ProductEngagement = (function() {
     function recordInteraction(params) {
         if (!initialized) {
             console.warn('ProductEngagement not initialized');
-            return;
+            return Promise.resolve();
         }
 
         var eventData = {
@@ -128,7 +128,7 @@ window.ProductEngagement = (function() {
             }]
         };
 
-        sendEvent(eventData, { keepalive: true });
+        return sendEvent(eventData, { keepalive: true });
     }
 
     /**
@@ -139,14 +139,41 @@ window.ProductEngagement = (function() {
         recordView(params);
 
         var element = document.getElementById('tile-' + params.productId);
-        if (element) {
-            element.addEventListener('click', function() {
-                var interactionParams = Object.assign({}, params, {
-                    channel: 'offsite'
-                });
-                recordInteraction(interactionParams);
-            });
+        if (!element) {
+            console.warn('ProductEngagement: tile-' + params.productId + ' not found');
+            return;
         }
+
+        element.addEventListener('click', function(e) {
+            var node = e.target;
+            var link = null;
+            while (node && node !== element.parentNode) {
+                if (node.tagName === 'A') {
+                    link = node;
+                    break;
+                }
+                node = node.parentNode;
+            }
+
+            var href = link && link.href;
+            var opensNewTab = link && (link.target === '_blank' || e.metaKey || e.ctrlKey || e.shiftKey);
+
+            if (href && !opensNewTab) {
+                e.preventDefault();
+                var navigated = false;
+                var go = function() {
+                    if (navigated) {
+                        return;
+                    }
+                    navigated = true;
+                    window.location.href = href;
+                };
+                recordInteraction(params).then(go);
+                setTimeout(go, 400);
+            } else {
+                recordInteraction(params);
+            }
+        });
     }
 
     /**

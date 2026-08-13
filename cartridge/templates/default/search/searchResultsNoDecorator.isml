@@ -4,11 +4,11 @@
 
 <script src="${URLUtils.staticURL('/js/product-engagement.js')}"></script>
 <script>
-  if (window.ProductEngagement && ${pdict.topsortTrackingEnabled}) {
+  if (window.ProductEngagement) {
     ProductEngagement.init({
       apiURL: '${pdict.topsortApiURL}',
       apiKey: '${pdict.topsortApiKey}',
-      trackingEnabled: ${pdict.topsortTrackingEnabled}
+      trackingEnabled: ${pdict.topsortTrackingEnabled ? true : false}
     });
   }
 </script>

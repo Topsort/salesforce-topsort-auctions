@@ -53,6 +53,11 @@ server.append("UpdateGrid", function (req, res, next) {
     });
 
     if (filtersApplied) {
+        var filteredConfig = TopsortService.getClientConfig();
+        viewData.bannerWinners = viewData.bannerWinners || {};
+        viewData.topsortApiKey = filteredConfig.apiKey;
+        viewData.topsortApiURL = filteredConfig.apiURL;
+        viewData.topsortTrackingEnabled = filteredConfig.trackingEnabled || false;
         res.setViewData(viewData);
         return next();
     }
@@ -249,6 +254,11 @@ server.append("Show", function (req, res, next) {
     });
 
     if (filtersApplied) {
+        var filteredConfig = TopsortService.getClientConfig();
+        viewData.bannerWinners = viewData.bannerWinners || {};
+        viewData.topsortApiKey = filteredConfig.apiKey;
+        viewData.topsortApiURL = filteredConfig.apiURL;
+        viewData.topsortTrackingEnabled = filteredConfig.trackingEnabled || false;
         res.setViewData(viewData);
         return next();
     }
