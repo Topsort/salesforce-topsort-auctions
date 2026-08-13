@@ -169,7 +169,7 @@ window.ProductEngagement = (function() {
                     window.location.href = href;
                 };
                 recordInteraction(params).then(go);
-                setTimeout(go, 400);
+                setTimeout(go, 2000);
             } else {
                 recordInteraction(params);
             }
