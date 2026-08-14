@@ -94,7 +94,7 @@ Add the following banner slots to your category page template:
                 position: 1,
                 page: ${pdict.productSearch.page || 1},
                 pageSize: ${pdict.productSearch.hitsPerPage || 12},
-                categoryId: '${pdict.request.querystring.cgid || ""}',
+                categoryId: '${pdict.topsortCategoryId || ""}',
                 resolvedBidId: '${categoryTopBanner.bidId || ""}'
             });
         }
@@ -119,7 +119,7 @@ Add the following banner slots to your category page template:
                 position: 2,
                 page: ${pdict.productSearch.page || 1},
                 pageSize: ${pdict.productSearch.hitsPerPage || 12},
-                categoryId: '${pdict.request.querystring.cgid || ""}',
+                categoryId: '${pdict.topsortCategoryId || ""}',
                 resolvedBidId: '${categorySideBanner.bidId || ""}'
             });
         }
@@ -144,7 +144,7 @@ Add the following banner slots to your category page template:
                 position: 3,
                 page: ${pdict.productSearch.page || 1},
                 pageSize: ${pdict.productSearch.hitsPerPage || 12},
-                categoryId: '${pdict.request.querystring.cgid || ""}',
+                categoryId: '${pdict.topsortCategoryId || ""}',
                 resolvedBidId: '${categoryBottomBanner.bidId || ""}'
             });
         }
@@ -169,7 +169,12 @@ The cartridge places sponsored products in specific positions:
 
 1. **First 2 winners**: Positions 0 and 1 (top of grid)
 2. **Next 2 winners**: Positions 6 and 7 (after first row on desktop)
-3. **Last 2 winners**: Second-to-last and last positions
+3. **Last 2 winners**: Second-to-last and last positions of the page
+
+Sponsored products **take over** those positions rather than being added to the page, so
+the number of tiles keeps matching the page size that pagination reports. A winner that is
+already among the organic results is shown once, in its sponsored position. Sponsored
+products never occupy more than half of a page.
 
 #### Customizing Product Placement
 
@@ -188,18 +193,17 @@ function placeTheSponsoredProducts(sponsoredProducts, originalEntries) {
 
 #### Grid Normalization
 
-The `normalizeProductsToRowsOfFour` function ensures products display in complete rows:
+`normalizeProductsToRows` trims the grid so it ends on a complete row:
 
-- If product count is divisible by 4, no changes
-- Otherwise, randomly removes 1-3 non-sponsored products from the last 10 items
-- Maintains sponsored product positions
+- If the product count is already a multiple of the column count, nothing changes
+- Otherwise the trailing non-sponsored products are dropped, from the end of the list, so
+  the same request always renders the same grid
+- Sponsored products are never removed
+- Pages with 10 or fewer products are left untouched
 
-**Note**: Grid normalization is automatically applied. To disable it, comment out the call in `Search.js`:
-
-```javascript
-// viewData.productSearch.productIds = topsortHelpers.normalizeProductsToRowsOfFour(productsWithSponsored);
-viewData.productSearch.productIds = productsWithSponsored;
-```
+This is **disabled by default**, because dropping products hides real search results and
+makes the displayed count disagree with the total. Enable it with the
+`topsortNormalizeRows` site preference only if row alignment cannot be solved with CSS.
 
 ---
 
@@ -326,14 +330,14 @@ sponsoredProducts.forEach(function(product) {
 - Check Business Manager logs for auction errors
 - Clear template cache: Business Manager > Administration > Sites > Manage Sites > [Your Site] > Cache
 
-### Products Not Arranged in Rows of 4
+### Grid Does Not End On A Complete Row
 
 **Possible Causes**:
-1. Grid normalization function not being called
+1. Grid normalization is disabled, which is the default
 2. CSS styling overriding grid layout
 
 **Solutions**:
-- Verify `normalizeProductsToRowsOfFour` is called in `Search.js`
+- Enable the `topsortNormalizeRows` site preference, keeping in mind that it hides results
 - Check CSS grid classes in your theme
 - Inspect HTML to confirm correct number of product tiles
 

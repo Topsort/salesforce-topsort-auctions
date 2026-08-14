@@ -194,7 +194,7 @@ In **Merchant Tools** > **Select Your Site** > **Site Preferences** > **Custom P
 * **Sponsored Markup**:
 
   ```html
-  <div class="featured-item-label">Featured</div>
+  <div class="topsort-sponsored-label">Patrocinado</div>
   <script>
     ProductEngagement.setupItemTracking({
       productId: '${product.productID}',
@@ -202,12 +202,22 @@ In **Merchant Tools** > **Select Your Site** > **Site Preferences** > **Custom P
       position: ${loopStatus.index+1},
       page: ${pdict.productSearch.page},
       pageSize: ${pdict.productSearch.hitsPerPage},
-      categoryId: '${pdict.request.querystring.cgid}',
+      categoryId: '${pdict.topsortCategoryId}',
       resolvedBidId: '${product.resolvedBidId}'
     });
   </script>
   ```
-* Customize the `.featured-item-label` or reposition as needed.
+* Customize the `.topsort-sponsored-label` or reposition as needed.
+* Use `pdict.topsortCategoryId`, published by the controller and by the Page Designer
+  component. `pdict.request` does not exist in SFRA templates.
+
+### Category Listing Pages (Page Designer)
+
+* **Files**: `/cartridge/experience/components/dynamic/productList.js` and the templates
+  under `/cartridge/templates/default/experience/components/dynamic/productList/`
+* Category pages are rendered by a Page Designer component instead of by `Search-Show`, so
+  the component runs its own auction. It overrides the storefront `productList` component
+  and must be kept in sync with it.
 
 ### Banner Display
 
@@ -215,22 +225,25 @@ In **Merchant Tools** > **Select Your Site** > **Site Preferences** > **Custom P
 * **Banner HTML**:
 
   ```html
-  <div id="featured-content" class="featured-content-container">
-    <a href="${pdict.featuredContentUrl}" target="_blank">
-      <img src="${pdict.featuredContentUrl}" alt="Featured Content" style="width:100%;" />
+  <isset name="banner" value="${pdict.bannerWinners ? pdict.bannerWinners['category-top'] : null}" scope="page" />
+  <div id="featured-content-category-top" class="featured-content-container">
+    <a href="${banner.redirectionUrl}" target="_blank" rel="noopener">
+      <img src="${banner.url}" alt="Featured Content" style="width:100%;" />
     </a>
   </div>
   <script>
     ProductEngagement.setupContentTracking({
+      elementId: 'featured-content-category-top',
       userId: '${pdict.tsuid}',
       position: 1,
       page: ${pdict.productSearch.page},
       pageSize: ${pdict.productSearch.hitsPerPage},
-      categoryId: '${pdict.request.querystring.cgid}',
-      resolvedBidId: '${pdict.featuredContentBidId}'
+      categoryId: '${pdict.topsortCategoryId}',
+      resolvedBidId: '${banner.bidId}'
     });
   </script>
   ```
+* `redirectionUrl` is the landing page the banner clicks through to; `url` is the image.
 * Feel free to move this block; include the `<script>` to retain tracking.
 
 ### Client-Side SDK

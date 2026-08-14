@@ -1,5 +1,12 @@
-<isloop items="${pdict.productSearch.productIds}" status="tilesLoop" var="product">
-    <div id="tile-${product.productID}" class="col-6 ${(typeof grid4 != 'undefined' && grid4) ? "col-lg-3" : "col-lg-4"} px-0" data-product-position="${tilesLoop.index}" data-product-type="${!product.isSponsored ? product.productSearchHit.hitType : ""}">
+<isset name="grid4" value="${typeof grid4 !== 'undefined' && grid4 ? grid4 : pdict.grid4}" scope="page" />
+<isloop items="${pdict.productSearch.productIds}" var="product" status="loopState">
+	<isif condition="${pdict.regions['gridRegion' + loopState.count] && pdict.regions['gridRegion' + loopState.count].region.size > 0}">
+		<isprint value="${pdict.regions['gridRegion' + loopState.count].setClassName(pdict.gridClassName).render()}" encoding="off"/>
+    </isif>
+    <div id="tile-${product.productID}" class="col-6 ${grid4 ? "col-lg-3" : "col-lg-4"} px-0">
+		<isif condition="${pdict.isEditMode && pdict.regions['gridRegion' + loopState.count] && pdict.regions['gridRegion' + loopState.count].region.size === 0}">
+				<isprint value="${pdict.regions['gridRegion' + loopState.count].setClassName('emptyListRegion').render()}" encoding="off"/>
+        </isif>
         <isif condition="${product.isSponsored === true}">
             <div class="topsort-sponsored-label" style="font-size: 11px; line-height: 1.2; color: #9e9e9e; text-align: right; padding-right: 4px;">
                 ${Resource.msg('label.product.sponsored', 'product', 'Patrocinado')}
@@ -9,7 +16,7 @@
                     ProductEngagement.setupItemTracking({
                         productId: '${product.productID}',
                         userId: '${pdict.tsuid || ""}',
-                        position: ${tilesLoop.index + 1},
+                        position: ${loopState.index + 1},
                         page: ${pdict.productSearch.page || 1},
                         pageSize: ${pdict.productSearch.hitsPerPage || 12},
                         categoryId: '${pdict.topsortCategoryId || ""}',
@@ -21,9 +28,15 @@
         <isobject object="${product.productSearchHit}" view="searchhit">
             <isif condition="${pdict.productSearch.category}">
                 <isinclude url="${URLUtils.url('Tile-Show', 'pid', product.productID, 'swatches', true, 'ratings', true, 'cgid', pdict.productSearch.category.id, 'compare', pdict.compareEnabled, 'addToCartButton', true, 'attributeMain', true, 'isSponsored', product.isSponsored)}" />
-            <iselse/>
+            <iselse>
                 <isinclude url="${URLUtils.url('Tile-Show', 'pid', product.productID, 'swatches', true, 'ratings', true, 'compare', false, 'addToCartButton', true, 'attributeMain', true, 'isSponsored', product.isSponsored)}" />
             </isif>
         </isobject>
     </div>
 </isloop>
+
+
+<input type="hidden" class="permalink" value="${pdict.productSearch.permalink}" />
+<isif condition="${pdict.productSearch.category != null}">
+    <input type="hidden" class="category-id" value="${pdict.productSearch.category.id}" />
+</isif>

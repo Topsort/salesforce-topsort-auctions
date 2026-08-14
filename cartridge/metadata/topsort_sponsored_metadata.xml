@@ -35,6 +35,14 @@
                 <externally-managed-flag>false</externally-managed-flag>
                 <default-value>true</default-value>
             </attribute-definition>
+            <attribute-definition attribute-id="topsortNormalizeRows">
+                <display-name xml:lang="x-default">Trim Grid To Complete Rows</display-name>
+                <description xml:lang="x-default">When enabled, trailing non-sponsored products are dropped so the grid ends on a complete row. This hides real search results and makes the product count disagree with the result count, so leave it off unless row alignment cannot be solved with CSS.</description>
+                <type>boolean</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <default-value>false</default-value>
+            </attribute-definition>
         </custom-attribute-definitions>
         <group-definitions>
             <attribute-group group-id="Topsort">
@@ -43,6 +51,7 @@
                 <attribute attribute-id="topsortApiKey"/>
                 <attribute attribute-id="topsortApiURL"/>
                 <attribute attribute-id="topsortTrackingEnabled"/>
+                <attribute attribute-id="topsortNormalizeRows"/>
             </attribute-group>
         </group-definitions>
     </type-extension>

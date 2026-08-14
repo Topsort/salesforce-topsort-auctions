@@ -1,7 +1,6 @@
 "use strict";
-// Force cache refresh 
 
-var collections = require("*/cartridge/scripts/util/collections");
+var DEFAULT_COLUMNS = 4;
 
 /**
 * Creates a new auction listing object by merging a required payload with optional parameters.
@@ -36,146 +35,109 @@ function assignObject(object, payload) {
 }
 
 /**
-* Places sponsored products into specific positions within the original product entries array.
+* Builds the ordered grid entries, giving sponsored products the first two positions, the
+* seventh and eighth, and the last two of the page.
 *
-* The function inserts the first two sponsored products at the beginning (positions 0 and 1),
-* the next two at positions 7 and 8, and the last two at the second-to-last and last positions
-* of the resulting array. The remaining original entries are preserved in their relative order.
+* Sponsored products take over organic positions instead of being added to them, so the
+* number of tiles keeps matching the page size that the paging model reports. A winner
+* that was already among the organic results is shown once, in its sponsored position.
 *
 * @param {Array<Object>} sponsoredTop - Array of sponsored product objects to be placed in prioritized positions.
 * @param {Array<Object>} originalEntries - Array of original product entry objects.
 * @returns {Array<Object>} - New array with sponsored products placed at specified positions among original entries.
 */
 function placeTheSponsoredProducts(sponsoredTop, originalEntries) {
-    // HERE: logic to place the winners in the correct positions
-    // modify this to place the winners in custom positions
+    var totalSlots = originalEntries.length;
 
-    // Place first 2 winners at positions 0,1
-    var firstTwoWinners = sponsoredTop.slice(0, 2);
-    var entriesWithFirstWinners = originalEntries;
-    if (firstTwoWinners.length > 0) {
-        entriesWithFirstWinners = firstTwoWinners.concat(originalEntries);
+    if (!sponsoredTop.length || !totalSlots) {
+        return originalEntries;
     }
 
-    // Place next 2 winners at positions 7,8
-    var nextTwoWinners = sponsoredTop.slice(2, 4);
-    var entriesWithMiddleWinners = entriesWithFirstWinners;
-    if (nextTwoWinners.length > 0) {
-        entriesWithMiddleWinners = entriesWithFirstWinners.slice(0, 6)
-            .concat(nextTwoWinners)
-            .concat(entriesWithFirstWinners.slice(6));
+    // The winners were cloned from the organic entries, so the organic copies have to go:
+    // otherwise the product renders twice and both tiles share the same DOM id.
+    var isPromoted = {};
+    for (var s = 0; s < sponsoredTop.length; s++) {
+        if (sponsoredTop[s] && sponsoredTop[s].productID) {
+            isPromoted[sponsoredTop[s].productID] = true;
+        }
     }
 
-    // Place last 2 winners at second-to-last and last positions
-    var lastTwoWinners = sponsoredTop.slice(4, 6);
-    var finalEntries = entriesWithMiddleWinners;
-    if (lastTwoWinners.length > 0) {
-        finalEntries = entriesWithMiddleWinners.slice(0, -2)
-            .concat(entriesWithMiddleWinners.slice(-2, entriesWithMiddleWinners.length))
-            .concat(lastTwoWinners);
+    var organicEntries = [];
+    for (var o = 0; o < originalEntries.length; o++) {
+        var entry = originalEntries[o];
+        if (entry && entry.productID && isPromoted[entry.productID]) {
+            continue;
+        }
+        organicEntries.push(entry);
+    }
+
+    // Never let sponsored products take over more than half of a page, which would
+    // otherwise happen on pages with very few results.
+    var placementLimit  = Math.min(sponsoredTop.length, Math.floor(totalSlots / 2));
+    var candidateSlots  = [0, 1, 6, 7, totalSlots - 2, totalSlots - 1];
+    var sponsoredBySlot = {};
+    var placed          = 0;
+
+    for (var c = 0; c < candidateSlots.length && placed < placementLimit; c++) {
+        var slot = candidateSlots[c];
+        if (slot < 0 || slot >= totalSlots || sponsoredBySlot[slot] !== undefined) {
+            continue;
+        }
+        sponsoredBySlot[slot] = placed;
+        placed++;
+    }
+
+    var finalEntries = [];
+    var organicIndex = 0;
+
+    for (var i = 0; i < totalSlots; i++) {
+        if (sponsoredBySlot[i] !== undefined) {
+            finalEntries.push(sponsoredTop[sponsoredBySlot[i]]);
+        } else if (organicIndex < organicEntries.length) {
+            finalEntries.push(organicEntries[organicIndex]);
+            organicIndex++;
+        }
     }
 
     return finalEntries;
 }
 
 /**
-* Normalizes the product array to ensure it contains a multiple of 4 products.
-* If the count is not divisible by 4, it randomly removes non-sponsored products
-* from the last 10 least relevant products to make it divisible by 4.
-* Only applies normalization when there are more than 10 products to avoid removing
-* results from specific searches (e.g., PLU searches).
+* Drops the trailing non-sponsored products needed to leave the grid with complete rows.
+* Products are removed from the tail rather than at random so that the same request always
+* renders the same grid, and sponsored products are never removed.
+*
+* Only applies when there are more than 10 products, to avoid trimming the results of
+* narrow searches such as a PLU lookup.
 *
 * @param {Array<Object>} products - Array of product objects (sponsored and non-sponsored).
-* @returns {Array<Object>} - Normalized array with product count as a multiple of 4.
+* @param {number} [columns] - Tiles per row the grid is rendering.
+* @returns {Array<Object>} - Array whose length is a multiple of the column count.
 */
-function normalizeProductsToRowsOfFour(products) {
-    var totalCount = products.length;
-    var remainder = totalCount % 4;
+function normalizeProductsToRows(products, columns) {
+    var perRow    = columns > 0 ? columns : DEFAULT_COLUMNS;
+    var remainder = products.length % perRow;
 
-    // Don't normalize if already divisible by 4 or if there are 10 or fewer products
-    if (remainder === 0 || totalCount <= 10) {
+    if (remainder === 0 || products.length <= 10) {
         return products;
     }
 
-    var toRemove = remainder;
+    var result    = products.slice();
+    var remaining = remainder;
 
-    // Find the last 10 non-sponsored products
-    var lastNonSponsored = [];
-    for (var i = products.length - 1; i >= 0 && lastNonSponsored.length < 10; i--) {
-        if (!products[i].isSponsored) {
-            lastNonSponsored.push({ index: i, product: products[i] });
-        }
-    }
-
-    if (lastNonSponsored.length === 0) {
-        return products;
-    }
-
-    // Randomly select products to remove from the last 10 non-sponsored
-    var toRemoveCount = Math.min(toRemove, lastNonSponsored.length);
-    var indicesToRemove = [];
-
-    // Shuffle and select random indices
-    for (var j = 0; j < toRemoveCount; j++) {
-        var randomIndex = Math.floor(Math.random() * lastNonSponsored.length);
-        indicesToRemove.push(lastNonSponsored[randomIndex].index);
-        lastNonSponsored.splice(randomIndex, 1);
-    }
-
-    // Sort indices in descending order to remove from end to start
-    indicesToRemove.sort(function(a, b) { return b - a; });
-
-    // Create new array without the removed products
-    var result = [];
-    for (var k = 0; k < products.length; k++) {
-        var shouldRemove = false;
-        for (var m = 0; m < indicesToRemove.length; m++) {
-            if (k === indicesToRemove[m]) {
-                shouldRemove = true;
-                break;
-            }
-        }
-        if (!shouldRemove) {
-            result.push(products[k]);
+    for (var i = result.length - 1; i >= 0 && remaining > 0; i--) {
+        if (!result[i].isSponsored) {
+            result.splice(i, 1);
+            remaining--;
         }
     }
 
     return result;
 }
 
-/**
-* Extracts and returns the list of banner winners from the Topsort auction response,
-* and sets the URL and bid ID of the first winner in the provided bannerWinnerContent object.
-*
-* @param {ArrayList} respResults - The Topsort auction response object containing results.
-* @returns {Object} - An array of banner winner objects, or an empty array if none found.
-*/
-function getBannerWinnerContent(respResults) {
-    var bannerWinnerContent = {
-        url: null,
-        bidId: null,
-        redirectionUrl: null
-    };
-
-    var banners = respResults ? collections.filter(respResults, function (r) {
-        return r.resultType === "banners";
-    }) : [];
-    var bannerWinners = banners[0] && banners[0].winners ? banners[0].winners : [];
-
-    if (bannerWinners.length) {
-        bannerWinnerContent.url   = bannerWinners[0].asset[0].url;
-        bannerWinnerContent.bidId = bannerWinners[0].resolvedBidId;
-        bannerWinnerContent.redirectionUrl = bannerWinners[0].url;
-        bannerWinnerContent.id = bannerWinners[0].id;
-    }
-
-    return bannerWinnerContent;
-}
-
 module.exports = {
     createListingsAuction: createListingsAuction,
     placeTheSponsoredProducts: placeTheSponsoredProducts,
-    getBannerWinnerContent: getBannerWinnerContent,
     assignObject: assignObject,
-    normalizeProductsToRowsOfFour: normalizeProductsToRowsOfFour
+    normalizeProductsToRows: normalizeProductsToRows
 };
