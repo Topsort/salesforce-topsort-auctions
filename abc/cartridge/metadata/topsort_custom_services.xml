@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<services xmlns="http://www.demandware.com/xml/impex/services/2014-09-26">
+
+    <!--
+        ADVERTENCIA: importar este archivo SOBREESCRIBE la credencial existente, incluyendo la URL
+        y el contenido de lpJSONConfig. Usalo solo para levantar una instancia nueva.
+
+        En un sandbox donde el servicio lapolar.topsort YA esta configurado y funcionando, NO lo
+        importes: solo importa topsort_custom_metadata.xml, que es aditivo y no toca credenciales.
+
+        Despues de importar hay que cargar a mano, en Administration > Operations > Services:
+          - Credentials > lapolar.topsort.cred > lpJSONConfig  (payloads de mock, opcional)
+        La API key NO va aca: se configura como preferencia de sitio topsortApiKey.
+    -->
+
+    <service-credential service-credential-id="lapolar.topsort.cred">
+        <url>https://api.topsort.com</url>
+        <user/>
+        <password/>
+    </service-credential>
+
+    <service-profile service-profile-id="lapolar.topsort.prof">
+        <timeout>10000</timeout>
+        <rate-limit-enabled>false</rate-limit-enabled>
+        <cb-enabled>false</cb-enabled>
+    </service-profile>
+
+    <service service-id="lapolar.topsort">
+        <service-type>HTTP</service-type>
+        <enabled>true</enabled>
+        <log-prefix>topsort</log-prefix>
+        <comm-log-enabled>false</comm-log-enabled>
+        <mock-mode>false</mock-mode>
+        <profile-id>lapolar.topsort.prof</profile-id>
+        <credential-id>lapolar.topsort.cred</credential-id>
+    </service>
+
+</services>

@@ -1,0 +1,23 @@
+<iscomment>
+    The product strip shared by all three sponsored brand formats.
+
+    Each slide is a direct child of .ts-sb-carousel, which is what Slick expects, and wraps a
+    Tile-Show remote include so the tiles match the ones in the product grid. carouselTile is
+    passed for the same reason the Einstein carousel passes it: it switches the tile to its
+    carousel styling. isSponsored is deliberately omitted so the tiles carry no "featured"
+    badge, since the disclosure label sits on the row instead.
+
+    Expects the "sbRow" page variable.
+</iscomment>
+
+<div class="ts-sb-products">
+    <div class="ts-sb-carousel">
+        <isloop items="${sbRow.products}" var="sbPid" status="sbProductLoop">
+            <div class="ts-sb-slide">
+                <div class="ts-sb-product" data-ts-sb-product data-pid="${sbPid}">
+                    <isinclude url="${URLUtils.url('Tile-Show', 'pid', sbPid, 'swatches', true, 'badges', true, 'icons', true, 'ratings', false, 'pricing', true, 'name', true, 'showQuickView', false, 'carouselTile', true, 'cgid', pdict.request.querystring.cgid, 'origin', 'sponsoredBrand', 'tilesLoopCount', sbProductLoop.index)}" />
+                </div>
+            </div>
+        </isloop>
+    </div>
+</div>

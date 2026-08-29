@@ -1,0 +1,60 @@
+[
+  {
+    "slotId": "search-top",
+    "type": "search",
+    "slots": 1,
+    "devices": ["desktop", "mobile"],
+    "dimensions": {
+      "desktop": { "width": 2610, "height": 660 },
+      "mobile": { "width": 1536, "height": 800 }
+    }
+  },
+  {
+    "slotId": "search-side",
+    "type": "search",
+    "slots": 1,
+    "devices": ["desktop"],
+    "dimensions": {
+      "desktop": { "width": 870, "height": 1160 }
+    }
+  },
+  {
+    "slotId": "search-bottom",
+    "type": "search",
+    "slots": 1,
+    "devices": ["desktop", "mobile"],
+    "dimensions": {
+      "desktop": { "width": 1740, "height": 440 },
+      "mobile": { "width": 1536, "height": 800 }
+    }
+  },
+  {
+    "slotId": "category-top",
+    "type": "category",
+    "slots": 1,
+    "devices": ["desktop", "mobile"],
+    "dimensions": {
+      "desktop": { "width": 2610, "height": 660 },
+      "mobile": { "width": 1536, "height": 800 }
+    }
+  },
+  {
+    "slotId": "category-side",
+    "type": "category",
+    "slots": 1,
+    "devices": ["desktop"],
+    "dimensions": {
+      "desktop": { "width": 870, "height": 1160 }
+    }
+  },
+  {
+    "slotId": "category-bottom",
+    "type": "category",
+    "slots": 1,
+    "devices": ["desktop", "mobile"],
+    "dimensions": {
+      "desktop": { "width": 1740, "height": 440 },
+      "mobile": { "width": 1536, "height": 800 }
+    }
+  }
+]

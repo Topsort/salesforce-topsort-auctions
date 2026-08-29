@@ -1,0 +1,29 @@
+<iscomment>
+    Format 3 - a small logo with its headline beside it, over a static three column product
+    grid. The grid turns into a swipeable strip below the desktop breakpoint, which
+    sponsored-brands.js handles by unslicking above it.
+
+    Expects the "sbRow" page variable.
+</iscomment>
+
+<div class="ts-sb-header">
+    <isif condition="${sbRow.logoUrl}">
+        <isif condition="${sbRow.linkUrl}">
+            <a class="ts-sb-logo" data-ts-sb-creative href="${sbRow.linkUrl}" target="_blank" rel="noopener sponsored">
+                <img src="${sbRow.logoUrl}" alt="${sbRow.headline || ''}" loading="lazy" />
+            </a>
+        <iselse/>
+            <div class="ts-sb-logo" data-ts-sb-creative>
+                <img src="${sbRow.logoUrl}" alt="${sbRow.headline || ''}" loading="lazy" />
+            </div>
+        </isif>
+    </isif>
+
+    <isif condition="${sbRow.headline}">
+        <span class="ts-sb-headline">${sbRow.headline}</span>
+    </isif>
+</div>
+
+<div class="ts-sb-body">
+    <isinclude template="search/components/sponsoredBrand/products" />
+</div>

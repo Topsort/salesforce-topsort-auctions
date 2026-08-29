@@ -1,0 +1,36 @@
+<iscomment>
+    Format 1 - creative image at one half, logo at one quarter, product carousel at one
+    quarter. Expects the "sbRow" page variable.
+</iscomment>
+
+<div class="ts-sb-body">
+    <isif condition="${sbRow.creativeUrl}">
+        <div class="ts-sb-creative-wrap">
+            <isif condition="${sbRow.linkUrl}">
+                <a class="ts-sb-creative" data-ts-sb-creative href="${sbRow.linkUrl}" target="_blank" rel="noopener sponsored">
+                    <img src="${sbRow.creativeUrl}" alt="${sbRow.headline || ''}" loading="lazy" />
+                </a>
+            <iselse/>
+                <div class="ts-sb-creative" data-ts-sb-creative>
+                    <img src="${sbRow.creativeUrl}" alt="${sbRow.headline || ''}" loading="lazy" />
+                </div>
+            </isif>
+        </div>
+    </isif>
+
+    <isif condition="${sbRow.logoUrl}">
+        <div class="ts-sb-logo-wrap">
+            <isif condition="${sbRow.linkUrl}">
+                <a class="ts-sb-logo" data-ts-sb-creative href="${sbRow.linkUrl}" target="_blank" rel="noopener sponsored">
+                    <img src="${sbRow.logoUrl}" alt="${sbRow.headline || ''}" loading="lazy" />
+                </a>
+            <iselse/>
+                <div class="ts-sb-logo" data-ts-sb-creative>
+                    <img src="${sbRow.logoUrl}" alt="${sbRow.headline || ''}" loading="lazy" />
+                </div>
+            </isif>
+        </div>
+    </isif>
+
+    <isinclude template="search/components/sponsoredBrand/products" />
+</div>

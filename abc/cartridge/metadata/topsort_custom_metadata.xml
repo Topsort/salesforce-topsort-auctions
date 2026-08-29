@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata xmlns="http://www.demandware.com/xml/impex/metadata/2006-10-31">
+
+    <!--
+        Metadata completa del cartridge topsort_auctions_custom.
+
+        Este archivo es autosuficiente: define todos los atributos personalizados que el cartridge
+        lee en tiempo de ejecucion, sin depender del metadata de topsort_auctions.
+
+        Atributos y donde se usan:
+          topsortEnabled          scripts/services/TopsortService.js  -> getConfig().enabled
+          topsortApiKey           scripts/services/TopsortService.js  -> getConfig().apiKey
+          topsortApiURL           scripts/services/TopsortService.js  -> getConfig().apiURL
+          topsortTrackingEnabled  scripts/services/TopsortService.js  -> getConfig().trackingEnabled
+          topsortFeaturedText     templates/.../sponsoredBrandRow.isml y app_abc/product/productTile.isml
+          topsortDisabled         scripts/helpers/topsortHelpers.js   -> isTopsortDisabledByCategory()
+          lpJSONConfig            scripts/services/TopsortService.js  -> mockFull()
+    -->
+
+    <type-extension type-id="SitePreferences">
+        <custom-attribute-definitions>
+
+            <attribute-definition attribute-id="topsortEnabled">
+                <display-name xml:lang="x-default">Enable Topsort Integration</display-name>
+                <display-name xml:lang="es-CL">Habilitar integracion Topsort</display-name>
+                <description xml:lang="x-default">Master switch. When disabled, no auction of any type is executed.</description>
+                <type>boolean</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <default-value>false</default-value>
+            </attribute-definition>
+
+            <attribute-definition attribute-id="topsortApiKey">
+                <display-name xml:lang="x-default">Topsort API Key</display-name>
+                <display-name xml:lang="es-CL">API Key de Topsort</display-name>
+                <description xml:lang="x-default">Bearer token used for auctions and events. Must be a TSE key, not a TSC key.</description>
+                <type>string</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <min-length>0</min-length>
+            </attribute-definition>
+
+            <attribute-definition attribute-id="topsortApiURL">
+                <display-name xml:lang="x-default">Topsort API Host</display-name>
+                <display-name xml:lang="es-CL">Host de la API de Topsort</display-name>
+                <description xml:lang="x-default">Base URL for the Topsort API, for example https://api.topsort.com</description>
+                <type>string</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <min-length>0</min-length>
+                <default-value>https://api.topsort.com</default-value>
+            </attribute-definition>
+
+            <attribute-definition attribute-id="topsortTrackingEnabled">
+                <display-name xml:lang="x-default">Enable Topsort Event Tracking</display-name>
+                <display-name xml:lang="es-CL">Habilitar eventos de Topsort</display-name>
+                <description xml:lang="x-default">Enables impression, click and purchase events.</description>
+                <type>boolean</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <default-value>true</default-value>
+            </attribute-definition>
+
+            <attribute-definition attribute-id="topsortFeaturedText">
+                <display-name xml:lang="x-default">Sponsored Label Text</display-name>
+                <display-name xml:lang="es-CL">Texto de la etiqueta de publicidad</display-name>
+                <description xml:lang="x-default">Disclosure label shown on sponsored product tiles and on sponsored brand rows. If empty, no label is rendered.</description>
+                <type>string</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <min-length>0</min-length>
+                <default-value>Patrocinado</default-value>
+            </attribute-definition>
+
+        </custom-attribute-definitions>
+        <group-definitions>
+            <attribute-group group-id="Topsort">
+                <display-name xml:lang="x-default">Topsort</display-name>
+                <attribute attribute-id="topsortEnabled"/>
+                <attribute attribute-id="topsortApiKey"/>
+                <attribute attribute-id="topsortApiURL"/>
+                <attribute attribute-id="topsortTrackingEnabled"/>
+                <attribute attribute-id="topsortFeaturedText"/>
+            </attribute-group>
+        </group-definitions>
+    </type-extension>
+
+    <type-extension type-id="Category">
+        <custom-attribute-definitions>
+            <attribute-definition attribute-id="topsortDisabled">
+                <display-name xml:lang="x-default">Disable Topsort for this category</display-name>
+                <display-name xml:lang="es-CL">Desactivar Topsort en esta categoria</display-name>
+                <description xml:lang="x-default">When true, no sponsored listings, banners or sponsored brands are requested for this category.</description>
+                <type>boolean</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <default-value>false</default-value>
+            </attribute-definition>
+        </custom-attribute-definitions>
+        <group-definitions>
+            <attribute-group group-id="Topsort">
+                <display-name xml:lang="x-default">Topsort</display-name>
+                <attribute attribute-id="topsortDisabled"/>
+            </attribute-group>
+        </group-definitions>
+    </type-extension>
+
+    <!--
+        lpJSONConfig ya puede existir en la instancia, porque es un atributo con prefijo "lp"
+        compartido por otras integraciones de La Polar. Si el import falla por conflicto de tipo,
+        elimina este bloque completo: significa que el atributo ya esta definido y no hace falta.
+    -->
+    <type-extension type-id="ServiceCredential">
+        <custom-attribute-definitions>
+            <attribute-definition attribute-id="lpJSONConfig">
+                <display-name xml:lang="x-default">Mock JSON Configuration</display-name>
+                <display-name xml:lang="es-CL">Configuracion JSON para mocks</display-name>
+                <description xml:lang="x-default">JSON object keyed by mock type. Read by TopsortService.mockFull() when the service profile runs in Mock mode.</description>
+                <type>text</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+            </attribute-definition>
+        </custom-attribute-definitions>
+        <group-definitions>
+            <attribute-group group-id="Topsort">
+                <display-name xml:lang="x-default">Topsort</display-name>
+                <attribute attribute-id="lpJSONConfig"/>
+            </attribute-group>
+        </group-definitions>
+    </type-extension>
+
+</metadata>

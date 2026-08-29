@@ -1,0 +1,43 @@
+
+<iscomment> Modification specific for the Power Reviews</iscomment>
+<isinclude template="powerreviews/manageRatings" />
+
+<isloop items="${pdict.productSearch.productIds}" status="tilesLoop" var="product">
+    <div id="tile-${product.productID}" data-product-position="${tilesLoop.index}" class="product-tile__item col-xs-6 col-sm-3 ms-no-padding" data-product-type="${!product.isSponsored ? product.productSearchHit.hitType : ""}">
+        <isif condition="${product.isSponsored === true}">
+            <script>
+                if (window.ProductEngagement) {
+                    var querystring = '${pdict.queryString}';
+                    var regex = /cgid=([^&]*)/;
+                    var match = querystring.match(regex);
+                    var categoryId = match && match.length > 1 ? match[1] : '';
+
+                    ProductEngagement.setupItemTracking({
+                        productId: '${product.productID}',
+                        userId: '${pdict.tsuid || ""}',
+                        position: ${tilesLoop.index + 1},
+                        page: ${pdict.productSearch.page || 1},
+                        pageSize: ${pdict.productSearch.hitsPerPage || 12},
+                        categoryId: categoryId,
+                        resolvedBidId: '${product.resolvedBidId || ""}'
+                    });
+                }
+            </script>
+        </isif>
+        <iscomment> Modification specific for the Power Reviews</iscomment>
+        <isset name="shouldDisplayProductRatings" value="${productsToDisplayRatings ? productsToDisplayRatings.indexOf(libPR.getProductID(product)) > -1 : true}" scope="page" />
+
+        <isobject object="${product.productSearchHit}" view="searchhit">
+            <isif condition="${pdict.productSearch.category || pdict.productSearch.searchKeywords}">
+                <isinclude url="${URLUtils.url('Tile-Show', 'pid', product.productID, 'badges', true, 'icons', true, 'swatches', true, 'ratings', shouldDisplayProductRatings, 'compare', pdict.compareEnabled, 'showQuickView', true, 'tilesLoopCount', tilesLoop.index, 'cgid', pdict.productSearch.category ? pdict.productSearch.category.id : null, 'searchKeywords', pdict.productSearch.searchKeywords, 'origin', pdict.action, 'isSponsored', product.isSponsored)}" />
+            <iselse>
+                <isinclude url="${URLUtils.url('Tile-Show', 'pid', product.productID, 'badges', true, 'icons', true, 'swatches', true, 'ratings', shouldDisplayProductRatings, 'compare', pdict.compareEnabled, 'showQuickView', true, 'tilesLoopCount', tilesLoop.index, 'origin', pdict.action, 'isSponsored', product.isSponsored)}" />
+            </isif>
+        </isobject>
+    </div>
+
+    <iscomment> Topsort sponsored brands - injected after the tile its slot is anchored to </iscomment>
+    <isset name="sbPosition" value="${'in-grid'}" scope="page" />
+    <isset name="sbAfterTile" value="${tilesLoop.count}" scope="page" />
+    <isinclude template="search/components/sponsoredBrands" />
+</isloop>
