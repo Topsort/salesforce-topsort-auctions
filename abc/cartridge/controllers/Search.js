@@ -96,11 +96,15 @@ function applySponsoredListingsAndBanners(req, res, next, category) {
     var categoryId  = req.querystring.cgid;
     var tsuidValue  = getOrCreateTsuid();
 
-    var searchCookie = new Cookie("topsortLastQuery", encodeURIComponent(searchQuery));
-    searchCookie.setMaxAge(24 * 60 * 60);
-    searchCookie.setHttpOnly(true);
-    searchCookie.setPath("/");
-    response.addHttpCookie(searchCookie);
+    // Only written when there is a term to record. Category pages have no `q`, and writing them
+    // through would store the string "undefined" and clobber the shopper's actual last search.
+    if (searchQuery) {
+        var searchCookie = new Cookie("topsortLastQuery", encodeURIComponent(searchQuery));
+        searchCookie.setMaxAge(24 * 60 * 60);
+        searchCookie.setHttpOnly(true);
+        searchCookie.setPath("/");
+        response.addHttpCookie(searchCookie);
+    }
 
     // TODO: When the compatibilty mode is at least 21.12, uncomment the normalization line
     // var sluggedCategoryId = categoryId ? categoryId.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : null;
