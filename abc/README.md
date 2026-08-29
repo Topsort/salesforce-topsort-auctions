@@ -22,7 +22,7 @@ plugin_shopper_agent:plugin_conversational_commerce:topsort_auctions_custom:int_
 6. [Atribución](#6-atribución)
 7. [Dimensiones esperadas de los creativos](#7-dimensiones-esperadas-de-los-creativos)
 8. [Creación de JSON Templates y Placements](#8-creación-de-json-templates-y-placements)
-9. [Feed de productos](#9-feed-de-productos)
+9. [Feed de catálogo](#9-feed-de-catálogo)
 10. [Pruebas en modo Mock](#10-pruebas-en-modo-mock)
 11. [Troubleshooting](#11-troubleshooting)
 12. [Pendientes](#12-pendientes)
@@ -38,7 +38,7 @@ plugin_shopper_agent:plugin_conversational_commerce:topsort_auctions_custom:int_
 | Marcas patrocinadas (sponsored brands) | `POST /v2/auctions/sponsored-brand` | Solo páginas de categoría | `helpers/sponsoredBrandsHelpers.js`, `config/topsort_sponsored_brands.json`, `templates/.../sponsoredBrand*` |
 | Eventos de impresión y clic | `POST /v2/events` (cliente) | — | `static/default/js/product-engagement.js`, `static/default/js/sponsored-brands.js` |
 | Evento de compra | `POST /v2/events` (servidor) | `Order-Confirm` | `controllers/Order.js`, `services/TopsortService.js` |
-| Feed de catálogo | Archivo CSV | Job programado | `services/TopsortProductFeed.js`, `util/TopsortUtil.js` |
+| Feed de catálogo | Archivo TSV que Topsort descarga | Job programado | `services/TopsortProductFeed.js`, `util/TopsortUtil.js`, `helpers/feedHelpers.js` |
 
 ### 1.1 Productos patrocinados
 
@@ -731,27 +731,135 @@ placement correspondiente. Códigos de error útiles al crear por API:
 
 ---
 
-## 9. Feed de productos
+## 9. Feed de catálogo
 
-`scripts/services/TopsortProductFeed.js` es el punto de entrada del job. Recorre
-`ProductMgr.queryAllSiteProducts()` y delega en `util/TopsortUtil.js`, que escribe un CSV separado por
-tabuladores en:
+A diferencia del resto de la integración, el catálogo **no se envía**: el cartridge genera un archivo
+plano y lo deja publicado, y es Topsort quien lo descarga por HTTPS según la frecuencia que se
+configure de su lado. No hay llamada saliente ni credencial involucrada en este flujo.
+
+### 9.1 Formato: es un TSV con extensión `.csv`
+
+El nombre del archivo termina en `.csv`, pero el separador es **tabulador**, no coma. Sale de
+`TopsortUtil.js`, donde se instancia el writer con el carácter 9:
+
+```js
+var fileWriter = new dw.io.FileWriter(file, "UTF-8");
+var writer     = new dw.io.CSVStreamWriter(fileWriter, String.fromCharCode(9));
+```
+
+Es decir: TSV codificado en UTF-8, con el entrecomillado propio de `CSVStreamWriter` (solo entrecomilla
+los campos que contienen el separador o comillas). Al configurar la fuente en Topsort hay que
+declararlo como **tab-delimited**; leerlo como CSV separado por comas deja todo en una sola columna.
+
+La extensión no se corrige por compatibilidad: cambiarla obliga a actualizar la URL registrada en
+Topsort.
+
+### 9.2 Dónde queda y cómo lo obtiene Topsort
 
 ```
 Libraries/topsort-shared-library/library/feeds/topsortFeed-{siteID}.csv
 ```
 
-Columnas: `id`, `title`, `description`, `availability`, `condition`, `price`, `link`, `image_link`,
-`brand`, `price_sale`, `custom_label_0..2` (los tres niveles de categoría, en orden invertido),
-`item_group_id`, `brand_id`.
+`{siteID}` sale de `Site.getCurrent().ID`, así que cada sitio genera su propio archivo y un
+marketplace multisitio necesita una fuente por sitio en Topsort. El directorio se crea con `mkdirs()`
+si no existe.
 
-Se excluyen product sets, bundles y masters. Los precios se leen de los price books configurados en
-`Constants.PRICEBOOK_SITE_PREF_IDS` (`lpNormalPricebook`, `lpInternetPricebook`, `lpTlpPricebook`): el
-primero define el precio normal y el menor de todos define el precio de oferta.
+Escribir dentro de la shared library `topsort-shared-library` es lo que hace el archivo alcanzable:
+el contenido estático de una library se sirve por HTTPS, y esa URL pública es la que se registra en
+Topsort como origen del catálogo. La URL exacta depende de cómo esté mapeada la library en el sitio,
+así que conviene confirmarla abriéndola en el navegador antes de registrarla.
+
+### 9.3 Qué productos entran
+
+El job recorre `ProductMgr.queryAllSiteProducts()` y descarta tres tipos:
+
+```js
+if (product.isProductSet() || product.isBundle() || product.isMaster()) {
+    continue;
+}
+```
+
+Quedan fuera los product sets, los bundles y los masters. Las variantes sí entran, cada una como fila
+propia, y se agrupan por `item_group_id`.
+
+### 9.4 Columnas
+
+| Columna | Origen | Notas |
+|---|---|---|
+| `id` | `product.getID()` | Es el identificador que se cruza con los `productIds` de las subastas y con los `productId` de los eventos de compra. |
+| `title` | `product.getName()`, con fallback al ID | |
+| `description` | `title + " - " + (product.brand \|\| "La Polar")` | Derivada, no es la descripción del producto. |
+| `availability` | `getAvailabilityStatus()` | `in stock` si está en stock, `preorder` en cualquier otro caso. Nunca emite `out of stock`. |
+| `condition` | Fijo | Siempre `new`. |
+| `price` | Price book normal | Ver 9.5. |
+| `price_sale` | Menor de los price books | Ver 9.5. |
+| `link` | `URLUtils.https("Product-Show", "pid", id)` | Pasa por `urlHelpers.replaceHostnameWithCanonicalNameInUrl()` y luego `encodeURI()`. |
+| `image_link` | Primera imagen `large` | `httpsURL` de la primera imagen; cadena vacía si el producto no tiene. Pasa por el reemplazo de hostname canónico y `encodeURI()`. |
+| `brand` | `product.brand` | Cae a `"La Polar"` si viene vacío. |
+| `custom_label_0` | Categoría, nivel más general | Ver 9.6. |
+| `custom_label_1` | Categoría, nivel intermedio | Ver 9.6. |
+| `custom_label_2` | Categoría primaria del producto | Ver 9.6. |
+| `item_group_id` | `custom.lpPridarticul` | Agrupa variantes del mismo artículo. Vacío si el atributo no está seteado. |
+| `brand_id` | `custom.lpArmarcaID` | Vacío si el atributo no está seteado. |
+
+> **El orden físico de las columnas no es el orden de las asignaciones en el código.** La fila se arma
+> sobre un `dw.util.SortedMap`, y `line.values()` devuelve los valores ordenados por clave interna, no
+> por orden de escritura. El resultado es alfabético por el nombre de variable, no por el nombre de la
+> columna:
+>
+> ```
+> availability  brand  custom_label_0  custom_label_1  custom_label_2  condition
+> description  id  image_link  link  brand_id  item_group_id  price  price_sale  title
+> ```
+>
+> La cabecera y las filas de datos pasan por el mismo mapa, así que siempre quedan alineadas entre sí.
+> El detalle importa solo si alguien mapea columnas por posición en vez de por nombre de cabecera.
+
+### 9.5 Precios
+
+Se leen de los price books configurados en `Constants.PRICEBOOK_SITE_PREF_IDS`, que son las site
+preferences `lpNormalPricebook`, `lpInternetPricebook` y `lpTlpPricebook`. El **primero** define
+`price`, y el **menor de los tres** define `price_sale`. Si un price book no tiene precio para el
+producto se omite del cálculo; si ninguno lo tiene, ambas columnas quedan vacías.
+
+Como `price_sale` es el mínimo incluyendo al normal, cuando no hay oferta vigente las dos columnas
+traen el mismo valor.
+
+### 9.6 Categorías
+
+`feedHelpers.getThreeCategoryLevelsInReversed()` sube desde `product.primaryCategory` por el árbol y
+toma hasta **tres** niveles, del más específico al más general. Después los invierte al escribirlos,
+de modo que `custom_label_0` es el más general de los tres capturados y `custom_label_2` la categoría
+primaria del producto.
+
+Tres consecuencias que conviene tener presentes:
+
+- Si el árbol es **más profundo que tres niveles**, se capturan los tres ancestros más cercanos, no
+  las categorías raíz. Los `custom_label_*` no representan la ruta completa del catálogo.
+- Si es **menos profundo**, las etiquetas sobrantes quedan como cadena vacía. Un producto colgado a
+  dos niveles deja `custom_label_0` vacío.
+- Un producto sin categoría primaria deja las tres vacías.
 
 > Los `custom_label_*` llevan el **ID** de la categoría de SFCC (`category.ID`), no el nombre. De ahí
 > salen los identificadores de categoría del catálogo en Topsort, que son los que deben calzar con el
 > `category.id` que se envía en las subastas.
+
+> **Ojo con las mayúsculas.** El feed escribe `category.ID` tal cual, mientras que las subastas de
+> listings y banners envían `categoryId.toLowerCase()` (ver sección 4.1). Si algún ID de categoría
+> tiene mayúsculas, los dos lados no coinciden literalmente y la subasta puede volver sin ganadores.
+> Es el primer lugar donde mirar cuando una categoría no devuelve resultados patrocinados.
+
+### 9.7 Operación del job
+
+`scripts/services/TopsortProductFeed.js` expone `start()`, que es el punto de entrada. El cartridge
+**no trae `steptypes.json`**, así que el step hay que configurarlo en Business Manager
+(**Administration > Operations > Jobs**) apuntando al módulo y a la función `start`.
+
+El writer hace `flush()` cada 700 productos para no acumular todo en memoria, y cierra el writer, el
+file writer y el iterador de productos en un bloque `finally`, de modo que un error a mitad de camino
+igual libera los recursos. Eso sí, el archivo queda **truncado y publicado**: si el job falla a mitad,
+Topsort descarga un catálogo incompleto en vez de fallar. Conviene revisar el resultado del job antes
+de asumir que el catálogo está al día.
 
 ---
 
@@ -798,6 +906,8 @@ Para previsualizar los tres formatos de marcas sin campañas reales:
 | Un banner registra impresiones pero nunca clics | Revisar que su wrapper tenga `data-ts-banner-bid` con el mismo `resolvedBidId` que recibe `setupContentTracking()`. Si el atributo queda vacío, el `querySelector` no encuentra el nodo. |
 | No se ejecuta ninguna subasta en una categoría | Revisar el atributo `topsortDisabled` de esa categoría. Si está en `true`, `Search.js` sale temprano y deja `bannerWinners` como objeto vacío, sin llamar a la API. |
 | Errores de servidor | Logs `SponsoredSearch` (listings y banners), `SponsoredBrands` (marcas) y `TopsortService` (HTTP). |
+| El catálogo en Topsort llega en una sola columna | El feed es tab-delimited pese a la extensión `.csv`. La fuente en Topsort tiene que estar declarada como TSV, no como CSV separado por comas. |
+| Faltan productos en el catálogo de Topsort | Product sets, bundles y masters se excluyen por diseño (solo entran variantes y productos estándar). Si faltan otros, revisar si el job terminó: al fallar a mitad deja el archivo truncado pero publicado, sin marcar error del lado de Topsort. |
 
 ---
 
