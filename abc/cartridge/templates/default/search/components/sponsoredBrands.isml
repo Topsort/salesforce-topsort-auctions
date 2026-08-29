@@ -1,0 +1,17 @@
+<iscomment>
+    Renders every sponsored brand row configured for a given position.
+
+    Callers must set both page variables before including this template:
+      sbPosition  - one of "top", "above-grid", "in-grid", "below-grid"
+      sbAfterTile - the 1-based tile index for in-grid injection, or null for every other
+                    position. It has to be set explicitly every time, because page-scoped
+                    variables survive across includes.
+</iscomment>
+
+<isif condition="${pdict.sponsoredBrands && sbPosition && pdict.sponsoredBrands[sbPosition] && pdict.sponsoredBrands[sbPosition].length > 0}">
+    <isloop items="${pdict.sponsoredBrands[sbPosition]}" var="sbRow">
+        <isif condition="${empty(sbAfterTile) || sbRow.afterTile === sbAfterTile}">
+            <isinclude template="search/components/sponsoredBrandRow" />
+        </isif>
+    </isloop>
+</isif>

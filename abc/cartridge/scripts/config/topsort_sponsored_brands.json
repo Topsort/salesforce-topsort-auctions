@@ -1,0 +1,35 @@
+[
+  {
+    "slotId": "sponsored-brand-hero-logo",
+    "format": "heroLogo",
+    "enabled": true,
+    "winners": 1,
+    "position": "above-grid",
+    "afterTile": null,
+    "minProducts": 3,
+    "maxProducts": 6,
+    "slidesToShow": { "desktop": 1, "mobile": 2 }
+  },
+  {
+    "slotId": "sponsored-brand-hero",
+    "format": "hero",
+    "enabled": true,
+    "winners": 1,
+    "position": "in-grid",
+    "afterTile": 8,
+    "minProducts": 3,
+    "maxProducts": 3,
+    "slidesToShow": { "desktop": 3, "mobile": 2 }
+  },
+  {
+    "slotId": "sponsored-brand-compact",
+    "format": "compact",
+    "enabled": true,
+    "winners": 1,
+    "position": "below-grid",
+    "afterTile": null,
+    "minProducts": 3,
+    "maxProducts": 3,
+    "slidesToShow": { "desktop": 3, "mobile": 2 }
+  }
+]

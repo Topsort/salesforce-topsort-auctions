@@ -1,0 +1,230 @@
+/**
+ * Topsort sponsored brand rows.
+ *
+ * One breakpoint at 1024px, matching DESKTOP_BREAKPOINT in sponsored-brands.js and the
+ * "desktop" value in app_lapolar_core's breakpoints.js. Everything narrower, tablets
+ * included, uses the stacked mobile layout.
+ *
+ * Rules matching :not(.slick-initialized) style the strip before Slick takes over, and are
+ * what the compact format relies on permanently on desktop, where Slick unslicks itself.
+ */
+
+.ts-sb-row {
+    width: 100%;
+    margin: 1.5rem 0;
+}
+
+.ts-sb-row + .ts-sb-row {
+    margin-top: 2.5rem;
+}
+
+.ts-sb-label {
+    display: inline-block;
+    margin-bottom: 0.5rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    background: #f2f2f2;
+    color: #666;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.ts-sb-body {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+}
+
+/* ----- Creative and logo ----- */
+
+.ts-sb-creative-wrap,
+.ts-sb-logo-wrap {
+    flex: 0 0 auto;
+    min-width: 0;
+    padding-right: 1rem;
+}
+
+.ts-sb-creative,
+.ts-sb-logo {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.ts-sb-creative img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+    object-fit: cover;
+}
+
+.ts-sb-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ts-sb-logo img {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+/* ----- Product strip ----- */
+
+.ts-sb-products {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.ts-sb-carousel {
+    position: relative;
+}
+
+.ts-sb-slide {
+    height: auto;
+}
+
+.ts-sb-product {
+    height: 100%;
+    padding: 0 0.5rem;
+}
+
+.ts-sb-product .product-tile__wrapper {
+    width: 100%;
+    height: 100%;
+}
+
+/* Keep tiles in a row the same height rather than ragged. */
+.ts-sb-carousel .slick-track {
+    display: flex;
+    align-items: stretch;
+}
+
+.ts-sb-carousel .slick-slide {
+    height: auto;
+}
+
+.ts-sb-carousel .slick-slide > div {
+    height: 100%;
+}
+
+/* Pre-initialization strip, so the slides do not flash stacked vertically. */
+.ts-sb-carousel:not(.slick-initialized) {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow: hidden;
+}
+
+.ts-sb-carousel:not(.slick-initialized) > .ts-sb-slide {
+    flex: 0 0 auto;
+}
+
+/* ----- Desktop layouts ----- */
+
+@media (min-width: 1024px) {
+    /* Format 1: creative one half, logo one quarter, products one quarter. */
+    .ts-sb-row--heroLogo .ts-sb-creative-wrap {
+        width: 50%;
+    }
+
+    .ts-sb-row--heroLogo .ts-sb-logo-wrap {
+        width: 25%;
+    }
+
+    .ts-sb-row--heroLogo .ts-sb-products {
+        width: 25%;
+    }
+
+    .ts-sb-row--heroLogo .ts-sb-carousel:not(.slick-initialized) > .ts-sb-slide {
+        width: 100%;
+    }
+
+    /* Format 2: creative one quarter, products three quarters. */
+    .ts-sb-row--hero .ts-sb-creative-wrap {
+        width: 25%;
+    }
+
+    .ts-sb-row--hero .ts-sb-products {
+        width: 75%;
+    }
+
+    .ts-sb-row--hero .ts-sb-carousel:not(.slick-initialized) > .ts-sb-slide {
+        width: 33.3333%;
+    }
+
+    /* Format 3: static three column grid, since Slick unslicks itself at this width. */
+    .ts-sb-row--compact .ts-sb-carousel:not(.slick-initialized) {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        overflow: visible;
+    }
+
+    .ts-sb-row--compact .ts-sb-carousel:not(.slick-initialized) > .ts-sb-slide {
+        width: auto;
+    }
+}
+
+/* ----- Compact header ----- */
+
+.ts-sb-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.ts-sb-header .ts-sb-logo {
+    flex: 0 0 auto;
+    width: 48px;
+    height: 48px;
+}
+
+.ts-sb-headline {
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+/* ----- Mobile and tablet ----- */
+
+@media (max-width: 1023px) {
+    .ts-sb-body {
+        display: block;
+    }
+
+    .ts-sb-creative-wrap,
+    .ts-sb-logo-wrap {
+        width: 100%;
+        padding-right: 0;
+        margin-bottom: 0.75rem;
+    }
+
+    .ts-sb-creative img {
+        height: auto;
+    }
+
+    .ts-sb-logo-wrap .ts-sb-logo {
+        justify-content: flex-start;
+    }
+
+    .ts-sb-logo-wrap .ts-sb-logo img {
+        max-height: 56px;
+    }
+
+    .ts-sb-products {
+        width: 100%;
+    }
+
+    .ts-sb-carousel:not(.slick-initialized) > .ts-sb-slide {
+        width: 50%;
+    }
+
+    .ts-sb-carousel .slick-dots {
+        margin-top: 0.5rem;
+    }
+}

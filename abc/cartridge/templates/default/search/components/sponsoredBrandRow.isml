@@ -1,0 +1,35 @@
+<iscomment>
+    Common shell for a single sponsored brand winner. Holds the tracking context and the
+    carousel settings that sponsored-brands.js reads, then delegates the inner layout to the
+    template for this row's format.
+
+    Expects the "sbRow" page variable, set by search/components/sponsoredBrands.
+</iscomment>
+
+<isset name="sbFeaturedText" value="${dw.system.Site.getCurrent().getCustomPreferenceValue('topsortFeaturedText')}" scope="page" />
+
+<div class="ts-sb-row ts-sb-row--${sbRow.format} col-xs-12 ms-no-padding"
+     data-ts-sb-row
+     data-ts-format="${sbRow.format}"
+     data-ts-slot="${sbRow.slotId}"
+     data-ts-bid="${sbRow.resolvedBidId || ''}"
+     data-ts-rank="${sbRow.rank || 1}"
+     data-ts-uid="${pdict.tsuid || ''}"
+     data-ts-page="${pdict.productSearch.page || 1}"
+     data-ts-page-size="${pdict.productSearch.hitsPerPage || 12}"
+     data-ts-category="${pdict.request.querystring.cgid || ''}"
+     data-ts-slides-desktop="${sbRow.slidesToShow.desktop}"
+     data-ts-slides-mobile="${sbRow.slidesToShow.mobile}">
+
+    <isif condition="${sbFeaturedText}">
+        <div class="ts-sb-label">${sbFeaturedText}</div>
+    </isif>
+
+    <isif condition="${sbRow.format === 'heroLogo'}">
+        <isinclude template="search/components/sponsoredBrand/heroLogo" />
+    <iselseif condition="${sbRow.format === 'hero'}" />
+        <isinclude template="search/components/sponsoredBrand/hero" />
+    <iselseif condition="${sbRow.format === 'compact'}" />
+        <isinclude template="search/components/sponsoredBrand/compact" />
+    </isif>
+</div>

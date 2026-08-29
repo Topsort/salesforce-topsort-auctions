@@ -1,0 +1,98 @@
+{
+  "_comment": [
+    "Sample sponsored brand auction response for previewing the three layouts without live campaigns.",
+    "",
+    "How to use it:",
+    "1. Business Manager > Administration > Operations > Services > Credentials > the credential",
+    "   used by the 'lapolar.topsort' service.",
+    "2. Merge the 'runSponsoredBrandAuction' key below into the existing lpJSONConfig JSON, keeping",
+    "   whatever 'runAuction' and 'sendEvent' entries are already there.",
+    "3. Set the service profile to Mock (mockFull) and load any category page.",
+    "",
+    "IMPORTANT: replace every REPLACE-WITH-REAL-PID value with product IDs that exist and are online",
+    "in this instance. The cartridge drops products it cannot resolve, and skips a row entirely when",
+    "fewer products survive than the format's minProducts, so fake IDs render nothing at all and log",
+    "a message under the SponsoredBrands logger.",
+    "",
+    "The three results are positional: they line up with the enabled slots in",
+    "cartridge/scripts/config/topsort_sponsored_brands.json, in that file's order."
+  ],
+  "runSponsoredBrandAuction": {
+    "results": [
+      {
+        "resultType": "brand",
+        "error": false,
+        "winners": [
+          {
+            "rank": 1,
+            "type": "url",
+            "id": "https://www.example.com/marca-uno",
+            "resolvedBidId": "mock-resolved-bid-hero-logo",
+            "campaignId": "00000000-0000-0000-0000-0000000000a1",
+            "vendorId": "mock-vendor-1",
+            "title": "Marca Uno",
+            "content": {
+              "creative": "https://i.imgur.com/Qy1xFtZ.png",
+              "logo": "https://i.imgur.com/Qy1xFtZ.png"
+            },
+            "productIds": [
+              "REPLACE-WITH-REAL-PID-1",
+              "REPLACE-WITH-REAL-PID-2",
+              "REPLACE-WITH-REAL-PID-3",
+              "REPLACE-WITH-REAL-PID-4",
+              "REPLACE-WITH-REAL-PID-5",
+              "REPLACE-WITH-REAL-PID-6"
+            ]
+          }
+        ]
+      },
+      {
+        "resultType": "brand",
+        "error": false,
+        "winners": [
+          {
+            "rank": 1,
+            "type": "url",
+            "id": "https://www.example.com/marca-dos",
+            "resolvedBidId": "mock-resolved-bid-hero",
+            "campaignId": "00000000-0000-0000-0000-0000000000a2",
+            "vendorId": "mock-vendor-2",
+            "title": "Marca Dos",
+            "content": {
+              "creative": "https://i.imgur.com/Qy1xFtZ.png"
+            },
+            "productIds": [
+              "REPLACE-WITH-REAL-PID-1",
+              "REPLACE-WITH-REAL-PID-2",
+              "REPLACE-WITH-REAL-PID-3"
+            ]
+          }
+        ]
+      },
+      {
+        "resultType": "brand",
+        "error": false,
+        "winners": [
+          {
+            "rank": 1,
+            "type": "product",
+            "id": "REPLACE-WITH-REAL-PID-1",
+            "resolvedBidId": "mock-resolved-bid-compact",
+            "campaignId": "00000000-0000-0000-0000-0000000000a3",
+            "vendorId": "mock-vendor-3",
+            "title": "Marca Tres",
+            "content": {
+              "logo": "https://i.imgur.com/Qy1xFtZ.png",
+              "headline": "Lo mejor de la marca"
+            },
+            "productIds": [
+              "REPLACE-WITH-REAL-PID-1",
+              "REPLACE-WITH-REAL-PID-2",
+              "REPLACE-WITH-REAL-PID-3"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
