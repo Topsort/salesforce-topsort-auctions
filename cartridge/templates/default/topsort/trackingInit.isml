@@ -1,0 +1,83 @@
+<iscomment>
+    Registers the "Patrocinado" label styles and loads the Topsort tracking library.
+
+    This is included from the product grid templates rather than from the page templates
+    because HITES reaches a product grid through several routes: search results, non Page
+    Designer category pages (search/categoryResultsNoDecorator), the Page Designer listing
+    component, and the AJAX variants of all of them. The sponsored tiles inside the grid
+    emit setupItemTracking calls, so anywhere the grid renders without this include the
+    impressions and clicks are silently dropped.
+
+    Tracking state is read straight from the site preference here rather than plumbed through
+    view data, so every one of those routes behaves the same without each controller and
+    component having to remember to set a flag.
+
+    Events are relayed through the Topsort-Event controller, so the marketplace API key is
+    never rendered into the page.
+
+    Banner fragments include this too, and a page can carry several of them. A shared element
+    id prevents duplicate downloads across remote include requests, while a queue holds setup
+    calls until the asynchronous library is ready.
+</iscomment>
+<isscript>
+    var assets = require('*/cartridge/scripts/assets');
+    var topsortHelpers = require('*/cartridge/scripts/helpers/topsortHelpers');
+    var URLUtils = require('dw/web/URLUtils');
+    var CSRFProtection = require('dw/web/CSRFProtection');
+    assets.addCss('/css/topsort-sponsored.css');
+
+    var topsortTrackingEnabled = require('*/cartridge/scripts/services/TopsortService').getConfig().trackingEnabled;
+    var topsortAlreadyInitialised = Boolean(request.custom.topsortTrackingInitialised);
+    request.custom.topsortTrackingInitialised = true;
+
+    var topsortClientConfig = null;
+    var topsortClientScriptUrl = null;
+    if (topsortTrackingEnabled && !topsortAlreadyInitialised) {
+        topsortClientConfig = topsortHelpers.toScriptJson({
+            eventUrl: URLUtils.url(
+                'Topsort-Event',
+                CSRFProtection.getTokenName(),
+                CSRFProtection.generateToken()
+            ).toString(),
+            trackingEnabled: true
+        });
+        topsortClientScriptUrl = topsortHelpers.toScriptJson(
+            URLUtils.staticURL('/js/product-engagement.js').toString()
+        );
+    }
+</isscript>
+<isif condition="${topsortTrackingEnabled && !topsortAlreadyInitialised}">
+    <script>
+        (function (clientConfig, scriptUrl) {
+            window.topsortTrackingConfig = clientConfig;
+            window.topsortTrackingQueue = window.topsortTrackingQueue || [];
+
+            function initializeTracking() {
+                if (!window.ProductEngagement) {
+                    return;
+                }
+                ProductEngagement.init(window.topsortTrackingConfig);
+                while (window.topsortTrackingQueue.length) {
+                    var call = window.topsortTrackingQueue.shift();
+                    if (typeof ProductEngagement[call.method] === 'function') {
+                        ProductEngagement[call.method](call.params);
+                    }
+                }
+            }
+
+            if (window.ProductEngagement) {
+                initializeTracking();
+                return;
+            }
+
+            if (!document.getElementById('topsort-engagement-script')) {
+                var script = document.createElement('script');
+                script.id = 'topsort-engagement-script';
+                script.async = true;
+                script.src = scriptUrl;
+                script.onload = initializeTracking;
+                document.head.appendChild(script);
+            }
+        })(<isprint value="${topsortClientConfig}" encoding="off"/>, <isprint value="${topsortClientScriptUrl}" encoding="off"/>);
+    </script>
+</isif>

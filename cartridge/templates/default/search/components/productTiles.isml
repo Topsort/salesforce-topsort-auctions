@@ -1,46 +1,52 @@
-<iscomment> Category PLPs do not use searchResultsNoDecorator; init tracking here so it runs on search and category grids. </iscomment>
-<script src="${URLUtils.staticURL('/js/product-engagement.js')}"></script>
-<script>
-    if (window.ProductEngagement) {
-        ProductEngagement.init({
-            apiURL: '${pdict.topsortApiURL}',
-            apiKey: '${pdict.topsortApiKey}',
-            trackingEnabled: ${pdict.topsortTrackingEnabled ? true : false}
-        });
-    }
-</script>
-
+<isinclude template="topsort/trackingInit" />
 <isloop items="${pdict.productSearch.productIds}" status="tilesLoop" var="product">
-    <div id="tile-${product.productID}" class="col-6 col-sm-4" data-product-position="${tilesLoop.index}" data-product-type="${!product.isSponsored ? product.productSearchHit.hitType : ""}">
-            <isif condition="${product.isSponsored === true}">
-            <div class="featured-item-label">
-                <isscript>
-                    // Localization can optionally be used here
-                    // var featuredText = Resource.msg('label.product.featured', 'product', null);
-                </isscript>
-                Featured
-            </div>
+    <div id="tile-${product.productID}" class="col-6 ${(typeof grid4 != 'undefined' && grid4) ? "col-lg-3" : "col-lg-4"} px-0" data-product-position="${tilesLoop.index}" data-product-type="${!product.isSponsored ? product.productSearchHit.hitType : ""}">
+        <isif condition="${product.isSponsored === true}">
+            <iscomment>
+                categoryId and searchQuery come straight from the shopper's query string, so
+                the payload is serialised through toScriptJson: JSON.stringify on its own
+                leaves a closing script tag intact, and this is printed with encoding="off".
+            </iscomment>
+            <isscript>
+                var topsortTileParams = require('*/cartridge/scripts/helpers/topsortHelpers').toScriptJson({
+                    productId: product.productID,
+                    position: tilesLoop.index + 1,
+                    page: pdict.productSearch.pageNumber || 1,
+                    pageSize: pdict.productSearch.pageSize || 12,
+                    categoryId: pdict.topsortCategoryId || '',
+                    searchQuery: pdict.topsortSearchQuery || '',
+                    resolvedBidId: product.resolvedBidId || '',
+                    eventToken: product.eventToken || ''
+                });
+            </isscript>
             <script>
                 if (window.ProductEngagement) {
-                    var querystring = '${pdict.queryString}';
-                    var regex = /cgid=([^&]*)/;
-                    var match = querystring.match(regex);
-                    var categoryId = match && match.length > 1 ? match[1] : '';
-
-                    ProductEngagement.setupItemTracking({
-                        productId: '${product.productID}',
-                        userId: '${pdict.tsuid || ""}',
-                        position: ${tilesLoop.index + 1},
-                        page: ${pdict.productSearch.page || 1},
-                        pageSize: ${pdict.productSearch.hitsPerPage || 12},
-                        categoryId: categoryId,
-                        resolvedBidId: '${product.resolvedBidId || ""}'
+                    ProductEngagement.setupItemTracking(<isprint value="${topsortTileParams}" encoding="off"/>);
+                } else {
+                    window.topsortTrackingQueue = window.topsortTrackingQueue || [];
+                    window.topsortTrackingQueue.push({
+                        method: 'setupItemTracking',
+                        params: <isprint value="${topsortTileParams}" encoding="off"/>
                     });
                 }
             </script>
         </isif>
-        <isobject object="${product.productSearchHit}" view="searchhit">
-            <isinclude url="${URLUtils.url('Tile-Show', 'pid', product.productID, 'swatches', true, 'ratings', true, 'isSponsored', product.isSponsored)}" />
-        </isobject>
+        <isif condition="${pdict.productSearch.category}">
+            <isset name="topsortTileUrl" value="${URLUtils.url('Tile-Show', 'pid', product.productID, 'swatches', true, 'ratings', true, 'cgid', pdict.productSearch.category.id, 'compare', pdict.compareEnabled, 'addToCartButton', true, 'attributeMain', true, 'isSponsored', product.isSponsored)}" scope="page" />
+        <iselse/>
+            <isset name="topsortTileUrl" value="${URLUtils.url('Tile-Show', 'pid', product.productID, 'swatches', true, 'ratings', true, 'compare', false, 'addToCartButton', true, 'attributeMain', true, 'isSponsored', product.isSponsored)}" scope="page" />
+        </isif>
+        <iscomment>
+            A sponsored winner can come from a keyword or category bid rather than from this
+            page of results, in which case there is no search hit to report to the analytics
+            view. Render the tile without the isobject wrapper instead of handing it null.
+        </iscomment>
+        <isif condition="${product.productSearchHit}">
+            <isobject object="${product.productSearchHit}" view="searchhit">
+                <isinclude url="${topsortTileUrl}" />
+            </isobject>
+        <iselse/>
+            <isinclude url="${topsortTileUrl}" />
+        </isif>
     </div>
 </isloop>

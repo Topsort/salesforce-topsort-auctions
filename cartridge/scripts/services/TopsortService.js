@@ -11,44 +11,47 @@ var topsortMockTypes = require("*/cartridge/scripts/config/topsortMockTypes.json
 var topsortService;
 try {
     topsortService = LocalServiceRegistry.createService("topsort", {
-    createRequest: function (svc, params) {
-        var config = TopsortService.getConfig();
-        svc.setRequestMethod(params.method);
-        svc.setURL(config.apiURL + params.endpoint);
-        svc.addHeader("Content-Type", "application/json");
-        svc.addHeader("User-Agent", "TopsortSFCC@1.0.0");
+        createRequest: function (svc, params) {
+            var config = TopsortService.getConfig();
+            svc.setRequestMethod(params.method);
+            svc.setURL(config.apiURL + params.endpoint);
+            svc.addHeader("Content-Type", "application/json");
+            svc.addHeader("User-Agent", "TopsortSFCC@1.0.0");
 
-        if (config.apiKey) {
-            svc.addHeader("Authorization", "Bearer " + config.apiKey);
+            if (config.apiKey) {
+                svc.addHeader("Authorization", "Bearer " + config.apiKey);
+            }
+
+            return JSON.stringify(params.data);
+        },
+        parseResponse: function (svc, client) {
+            return JSON.parse(client.text);
+        },
+        filterLogMessage: function (msg) {
+            // Comm logging is off in services.xml, but it can be switched back on in
+            // Business Manager, so redact the marketplace key here rather than relying on
+            // that flag to keep it out of the logs.
+            return msg ? msg.replace(/(Bearer\s+)[\w.-]+/gi, "$1***") : msg;
+        },
+        getRequestLogMessage: function (request) {
+            return request;
+        },
+        getResponseLogMessage: function (response) {
+            try {
+                var jsonResponse = JSON.parse(response.text);
+                return JSON.stringify(jsonResponse, null, 4);
+            } catch (e) {
+                return response.text;
+            }
+        },
+        mockFull : function (svc, params) {
+            var serviceCredentials   = svc.getConfiguration().getCredential();
+            var serviceConfiguration = JSON.parse(serviceCredentials.custom.lpJSONConfig);
+
+            return serviceConfiguration && serviceConfiguration[params.mockType]
+                ? serviceConfiguration[params.mockType]
+                : null;
         }
-
-        return JSON.stringify(params.data);
-    },
-    parseResponse: function (svc, client) {
-        return JSON.parse(client.text);
-    },
-    filterLogMessage: function (msg) {
-        return msg;
-    },
-    getRequestLogMessage: function (request) {
-        return request;
-    },
-    getResponseLogMessage: function (response) {
-        try {
-            var jsonResponse = JSON.parse(response.text);
-            return JSON.stringify(jsonResponse, null, 4);
-        } catch (e) {
-            return response.text;
-        }
-    },
-    mockFull : function (svc, params) {
-        var serviceCredentials   = svc.getConfiguration().getCredential();
-        var serviceConfiguration = JSON.parse(serviceCredentials.custom.lpJSONConfig);
-
-        return serviceConfiguration && serviceConfiguration[params.mockType]
-            ? serviceConfiguration[params.mockType]
-            : null;
-    }
     });
 } catch (e) {
     Logger.error("Failed to initialize Topsort service: {0}. Please configure the 'topsort' service in Business Manager under Administration > Operations > Services", e.message);
@@ -68,7 +71,10 @@ var TopsortService = {
             apiKey: current.getCustomPreferenceValue("topsortApiKey"),
             apiURL: current.getCustomPreferenceValue("topsortApiURL") || "https://api.topsort.com",
             enabled: current.getCustomPreferenceValue("topsortEnabled"),
-            trackingEnabled: current.getCustomPreferenceValue("topsortTrackingEnabled")
+            bannersEnabled: current.getCustomPreferenceValue("topsortBannersEnabled"),
+            bannerAssetHosts: current.getCustomPreferenceValue("topsortBannerAssetHosts"),
+            trackingEnabled: current.getCustomPreferenceValue("topsortTrackingEnabled"),
+            auctionTrafficPercent: current.getCustomPreferenceValue("topsortAuctionTrafficPercent")
         };
     },
 
@@ -146,9 +152,12 @@ var TopsortService = {
      * Send purchase event
      * @param {dw.order.Order} order - Order object
      * @param {string} opaqueUserId - User ID from cookie
+     * @param {string} [eventId] - Idempotency key Topsort dedupes on. Pass a value derived
+     *                             from the order so a retry is not counted as a second
+     *                             purchase; omit it only for genuinely one-off sends.
      * @returns {Object} Event response
      */
-    sendPurchaseEvent: function (order, opaqueUserId) {
+    sendPurchaseEvent: function (order, opaqueUserId, eventId) {
         if (!this.getConfig().trackingEnabled) {
             return { success: false, error: "Product analytics is disabled" };
         }
@@ -157,26 +166,42 @@ var TopsortService = {
         var pliIter = order.allProductLineItems.iterator();
         while (pliIter.hasNext()) {
             var pli = pliIter.next();
-            var unitPrice = pli.adjustedPrice.value / pli.quantityValue;
 
-            if (unitPrice) {
-                items.push({
-                    productId: pli.productID,
-                    unitPrice: unitPrice,
-                    quantity: pli.quantityValue
-                });
+            // Money.getValue() throws when the amount is not available, which
+            // allProductLineItems can produce for bonus and option line items. This runs on
+            // Order-Confirm, so an unavailable price has to skip its item rather than escape
+            // as an exception. A zero unit price is skipped for a different reason: the
+            // events API declares unitPrice with exclusiveMinimum 0, so a fully discounted
+            // item would take the whole batch down with it.
+            if (pli.adjustedPrice && pli.adjustedPrice.available && pli.quantityValue > 0) {
+                var unitPrice = pli.adjustedPrice.value / pli.quantityValue;
+
+                if (unitPrice > 0) {
+                    items.push({
+                        productId: pli.productID,
+                        unitPrice: unitPrice,
+                        quantity: pli.quantityValue
+                    });
+                }
             }
         }
 
+        // items is declared minItems 1, so an order whose every line came out free or
+        // unpriced has nothing that can be reported rather than a smaller event to send.
+        if (!items.length) {
+            Logger.warn("Skipping the Topsort purchase event for order {0}: no line item has a reportable unit price", order.orderNo);
+            return { success: false, error: "No line item has a reportable unit price" };
+        }
+
+        // Only the fields the purchase schema declares. It is additionalProperties: false,
+        // so an extra orderId, currency or total rejects the batch and the order goes
+        // unattributed - which is the one event the whole integration is measured on.
         var eventData = {
             purchases: [{
-                id: require("dw/util/UUIDUtils").createUUID(),
+                id: eventId || require("dw/util/UUIDUtils").createUUID(),
                 occurredAt: new Date().toISOString(),
                 opaqueUserId: opaqueUserId,
-                items: items,
-                orderId: order.orderNo,
-                currency: order.currencyCode,
-                total: order.totalGrossPrice.value
+                items: items
             }]
         };
 
@@ -184,15 +209,17 @@ var TopsortService = {
     },
 
     /**
-     * Get client-side tracking configuration
+     * Get the tracking configuration that is safe to render into a storefront page.
+     *
+     * The API key is intentionally absent. It authenticates auctions and events for the
+     * whole marketplace, so it stays server-side; the browser posts events to the
+     * Topsort-Event controller, which attaches the key.
+     *
      * @returns {Object} Configuration for client-side tracking
      */
     getClientConfig: function () {
-        var config = this.getConfig();
         return {
-            apiURL: config.apiURL,
-            apiKey: config.apiKey,
-            trackingEnabled: config.trackingEnabled
+            trackingEnabled: this.getConfig().trackingEnabled
         };
     }
 };

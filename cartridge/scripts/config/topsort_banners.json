@@ -1,50 +1,58 @@
 [
-  {
-    "slotId": "search-top",
-    "width": 1200,
-    "height": 1200,
-    "slots": 1,
-    "url": "https://i.imgur.com/Qy1xFtZ.png",
-    "type": "search"
-  },
-  {
-    "slotId": "category-top",
-    "width": 1200,
-    "height": 1200,
-    "slots": 1,
-    "url": "https://i.imgur.com/Qy1xFtZ.png",
-    "type": "category"
-  },
-  {
-    "slotId": "category-side",
-    "width": 1200,
-    "height": 1200,
-    "slots": 1,
-    "url": "https://i.imgur.com/Qy1xFtZ.png",
-    "type": "category"
-  },
-  {
-    "slotId": "category-bottom",
-    "width": 1200,
-    "height": 1200,
-    "slots": 1,
-    "url": "https://i.imgur.com/Qy1xFtZ.png",
-    "type": "category"
-  },
-  {
-    "slotId": "search-side",
-    "width": 1200,
-    "height": 1200,
-    "slots": 1,
-    "url": "https://i.imgur.com/Qy1xFtZ.png",
-    "type": "search"
-  },
-  {
-    "slotId": "search-bottom",
-    "width": 1200,
-    "height": 1200,
-    "slots": 1,
-    "url": "https://i.imgur.com/Qy1xFtZ.png",
-    "type": "search"
-  }
+    {
+        "slotId": "home-slider-5",
+        "page": "home",
+        "slots": 1,
+        "position": 1,
+        "devices": ["desktop", "mobile"],
+        "sizes": "(min-width: 1340px) 1340px, 100vw"
+    },
+    {
+        "slotId": "home-slider-6",
+        "page": "home",
+        "slots": 1,
+        "position": 2,
+        "devices": ["desktop", "mobile"],
+        "sizes": "(min-width: 1340px) 1340px, 100vw"
+    },
+    {
+        "slotId": "home-banner-full",
+        "page": "home",
+        "slots": 1,
+        "position": 3,
+        "devices": ["desktop", "mobile"],
+        "sizes": "100vw"
+    },
+    {
+        "slotId": "search-side",
+        "page": "search",
+        "slots": 1,
+        "position": 1,
+        "devices": ["desktop"],
+        "sizes": "(min-width: 1200px) 305px, 205px"
+    },
+    {
+        "slotId": "search-bottom",
+        "page": "search",
+        "slots": 1,
+        "position": 2,
+        "devices": ["desktop", "mobile"],
+        "sizes": "100vw"
+    },
+    {
+        "slotId": "category-side",
+        "page": "category",
+        "slots": 1,
+        "position": 1,
+        "devices": ["desktop"],
+        "sizes": "(min-width: 1200px) 305px, 205px"
+    },
+    {
+        "slotId": "category-bottom",
+        "page": "category",
+        "slots": 1,
+        "position": 2,
+        "devices": ["desktop", "mobile"],
+        "sizes": "100vw"
+    }
 ]

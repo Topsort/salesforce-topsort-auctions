@@ -1,0 +1,89 @@
+<iscomment>
+    Runs the listings auction for the Page Designer grid. This lives in the template because
+    the component script below this cartridge builds its model internally and returns finished
+    markup, leaving no seam to merge winners into productIds beforehand. Only the Page Designer
+    chain reaches this template, so the auction still runs exactly once per request: the search
+    and non Page Designer category pages are handled by the Search controller instead.
+</iscomment>
+<isscript>
+    try {
+        require('*/cartridge/scripts/helpers/topsortListings').applyListingsAuction(pdict.productSearch, {
+            categoryId: pdict.categoryId
+        });
+    } catch (e) {
+        // A throw here would take the whole category page down with it, so the grid falls
+        // back to the organic results. Winners are merged into productIds in one step at
+        // the end of the auction, so a failure leaves nothing half-merged and the page
+        // stays cacheable: there are no bid ids in the markup to cache.
+        require('dw/system/Logger').getLogger('SponsoredSearch').error('Topsort auction failed for the Page Designer grid: {0}', e.message);
+    }
+</isscript>
+<isinclude template="topsort/trackingInit" />
+<isset name="grid4" value="${typeof grid4 !== 'undefined' && grid4 ? grid4 : pdict.grid4}" scope="page" />
+<isset name="topsortOrganicPosition" value="${0}" scope="page" />
+<isloop items="${pdict.productSearch.productIds}" var="product" status="loopState">
+    <isif condition="${product.isInjected !== true}">
+        <isset name="topsortOrganicPosition" value="${topsortOrganicPosition + 1}" scope="page" />
+    </isif>
+	<isif condition="${product.isInjected !== true && pdict.regions['gridRegion' + topsortOrganicPosition] && pdict.regions['gridRegion' + topsortOrganicPosition].region.size > 0}">
+		<isprint value="${pdict.regions['gridRegion' + topsortOrganicPosition].setClassName(pdict.gridClassName).render()}" encoding="off"/>
+    </isif>
+    <div id="tile-${product.productID}" class="col-6 ${grid4 ? "col-lg-3" : "col-lg-4"} px-0">
+		<isif condition="${product.isInjected !== true && pdict.isEditMode && pdict.regions['gridRegion' + topsortOrganicPosition] && pdict.regions['gridRegion' + topsortOrganicPosition].region.size === 0}">
+				<isprint value="${pdict.regions['gridRegion' + topsortOrganicPosition].setClassName('emptyListRegion').render()}" encoding="off"/>
+        </isif>
+        <isif condition="${product.isSponsored === true}">
+            <iscomment>
+                Serialised through toScriptJson rather than JSON.stringify: the payload carries
+                the auction response and is printed with encoding="off", and JSON.stringify on
+                its own leaves a closing script tag intact.
+            </iscomment>
+            <isscript>
+                var topsortHelpers = require('*/cartridge/scripts/helpers/topsortHelpers');
+                var topsortTileParams = topsortHelpers.toScriptJson({
+                    productId: product.productID,
+                    position: loopState.index + 1,
+                    page: pdict.productSearch.pageNumber || 1,
+                    pageSize: pdict.productSearch.pageSize || 12,
+                    categoryId: topsortHelpers.resolveTopsortCategoryId(pdict.categoryId) || '',
+                    resolvedBidId: product.resolvedBidId || '',
+                    eventToken: product.eventToken || ''
+                });
+            </isscript>
+            <script>
+                if (window.ProductEngagement) {
+                    ProductEngagement.setupItemTracking(<isprint value="${topsortTileParams}" encoding="off"/>);
+                } else {
+                    window.topsortTrackingQueue = window.topsortTrackingQueue || [];
+                    window.topsortTrackingQueue.push({
+                        method: 'setupItemTracking',
+                        params: <isprint value="${topsortTileParams}" encoding="off"/>
+                    });
+                }
+            </script>
+        </isif>
+        <isif condition="${pdict.productSearch.category}">
+            <isset name="topsortTileUrl" value="${URLUtils.url('Tile-Show', 'pid', product.productID, 'swatches', true, 'ratings', true, 'cgid', pdict.productSearch.category.id, 'compare', pdict.compareEnabled, 'addToCartButton', true, 'attributeMain', true, 'isSponsored', product.isSponsored)}" scope="page" />
+        <iselse/>
+            <isset name="topsortTileUrl" value="${URLUtils.url('Tile-Show', 'pid', product.productID, 'swatches', true, 'ratings', true, 'compare', false, 'addToCartButton', true, 'attributeMain', true, 'isSponsored', product.isSponsored)}" scope="page" />
+        </isif>
+        <iscomment>
+            A sponsored winner can come from a keyword or category bid rather than from this
+            page of results, in which case there is no search hit to report to the analytics
+            view. Render the tile without the isobject wrapper instead of handing it null.
+        </iscomment>
+        <isif condition="${product.productSearchHit}">
+            <isobject object="${product.productSearchHit}" view="searchhit">
+                <isinclude url="${topsortTileUrl}" />
+            </isobject>
+        <iselse/>
+            <isinclude url="${topsortTileUrl}" />
+        </isif>
+    </div>
+</isloop>
+
+
+<input type="hidden" class="permalink" value="${pdict.productSearch.permalink}" />
+<isif condition="${pdict.productSearch.category != null}">
+    <input type="hidden" class="category-id" value="${pdict.productSearch.category.id}" />
+</isif>
