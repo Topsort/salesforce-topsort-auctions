@@ -1,0 +1,27 @@
+<iscomment>
+    Topsort sponsored banner, as a Page Designer component.
+
+    Used for the three home page slots. The merchandiser drops one of these into the hero
+    carousel slides region for home-slider-5 and home-slider-6, and into the full width row
+    for home-banner-full; the slot attribute is what decides which auction runs.
+
+    The banner comes in through a remote include so the home page keeps its page cache. When
+    no campaign wins, the fragment removes the wrapper Page Designer puts around this
+    component, which is what stops an empty slide appearing in the carousel.
+</iscomment>
+<isscript>
+    // Registered from here rather than from the fragment. A remote include renders no
+    // decorator, so an assets.addCss inside it would be collected and then thrown away with
+    // the fragment's own request - the stylesheet has to be asked for by the page. On the
+    // home page nothing else pulls it in, because there is no product grid.
+    require('*/cartridge/scripts/assets').addCss('/css/topsort-sponsored.css');
+</isscript>
+<isif condition="${pdict.isEditMode}">
+    <div class="ts-banner-placeholder">
+        <span class="ts-banner-placeholder__title">Topsort - Sponsored Banner</span>
+        <span class="ts-banner-placeholder__slot">${pdict.slotId}</span>
+        <span class="ts-banner-placeholder__hint">Filled at runtime by the winning campaign for this slot. Nothing renders when no campaign wins.</span>
+    </div>
+<iselse/>
+    <isinclude url="${URLUtils.url('Topsort-Banner', 'slotId', pdict.slotId)}" />
+</isif>

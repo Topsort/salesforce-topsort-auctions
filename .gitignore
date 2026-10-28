@@ -1,0 +1,3 @@
+# Compiled client assets (source lives under cartridge/client/)
+cartridge/static/*/js/
+cartridge/static/*/css/
