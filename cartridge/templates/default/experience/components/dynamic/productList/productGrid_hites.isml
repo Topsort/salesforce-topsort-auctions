@@ -62,11 +62,7 @@
                 }
             </script>
         </isif>
-        <isif condition="${pdict.productSearch.category}">
-            <isset name="topsortTileUrl" value="${URLUtils.url('Tile-Show', 'pid', product.productID, 'swatches', true, 'ratings', true, 'cgid', pdict.productSearch.category.id, 'compare', pdict.compareEnabled, 'addToCartButton', true, 'attributeMain', true, 'isSponsored', product.isSponsored)}" scope="page" />
-        <iselse/>
-            <isset name="topsortTileUrl" value="${URLUtils.url('Tile-Show', 'pid', product.productID, 'swatches', true, 'ratings', true, 'compare', false, 'addToCartButton', true, 'attributeMain', true, 'isSponsored', product.isSponsored)}" scope="page" />
-        </isif>
+        <isset name="topsortTileUrl" value="${URLUtils.url('Tile-Show', 'pid', product.productID, 'swatches', true, 'ratings', true, 'attributeMain', true, 'isSponsored', product.isSponsored, 'loading', loopState.count > 4 ? 'lazy' : 'eager', 'fetchpriority', loopState.first ? 'high' : null)}" scope="page" />
         <iscomment>
             A sponsored winner can come from a keyword or category bid rather than from this
             page of results, in which case there is no search hit to report to the analytics

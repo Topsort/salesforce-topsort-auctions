@@ -72,7 +72,17 @@
                             <isif condition="${pdict.productSearch.productIds.length > 0}">
                                 <!-- Refinement bar -->
                                 <div class="d-none d-lg-block">
-                                    <isinclude url="${pdict.refineurl}"/>
+                                    <isif condition="${pdict.isEditMode}">
+                                        <isinclude url="${pdict.refineurl}"/>
+                                    <iselse/>
+                                        <div class="js-refinebar-container" data-refine-url="${pdict.refineurl}">
+                                            <div class="refinebar-skeleton-loader">
+                                                <div class="skeleton-filter-line mb-3"></div>
+                                                <div class="skeleton-filter-line mb-3"></div>
+                                                <div class="skeleton-filter-line mb-3"></div>
+                                            </div>
+                                        </div>
+                                    </isif>
                                 </div>
                             </isif>
                             <div class="filter-espot-wrapper"></div>
@@ -154,7 +164,11 @@
                                         <svg class="icon icon-filter"><use xlink:href="#filter-icon"></use></svg>
                                         <p class="filter-lbl order-lbl text-uppercase no-margins">${Resource.msg('label.control.filter', 'search', null)}</p>
                                     </div>
-                                    <isinclude url="${pdict.refineurl}"/>
+                                    <isif condition="${pdict.isEditMode}">
+                                        <isinclude url="${pdict.refineurl}"/>
+                                    <iselse/>
+                                        <div class="js-refinebar-mobile-target d-none" data-refine-url="${pdict.refineurl}"></div>
+                                    </isif>
                                 </div>
 
                                 <div class="filter-col d-flex order-by">

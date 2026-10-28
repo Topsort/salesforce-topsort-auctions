@@ -10,8 +10,8 @@ Topsort retail media for the HITES SFRA storefront. Two formats:
 Impressions, clicks and purchases are reported back to Topsort through a server-side relay,
 so the marketplace API key never reaches the browser.
 
-Everything is **fail-open**: when the integration is disabled, misconfigured, refined by the
-shopper, or the API errors out, the storefront renders exactly as it would without this
+Everything is **fail-open**: when the integration is disabled, misconfigured, filtered by
+brand, or the API errors out, the storefront renders exactly as it would without this
 cartridge. Every route this cartridge appends to is wrapped, so an unexpected exception in
 Topsort code ends as a log line and never as an error page — see
 [Error containment](#error-containment).
@@ -430,8 +430,8 @@ All of the following must hold:
 3. The grid has at least one organic product.
 4. The request falls inside `topsortAuctionTrafficPercent` — see
    [Traffic share](#traffic-share).
-5. No **non-category** refinement is selected — sponsored products are suppressed on refined
-   result sets by design. A category refinement alone does not suppress them.
+5. No **brand** refinement is selected. Brand-filtered result sets suppress sponsored
+   listings. Other refinement types continue to run an auction.
 
 ### Auction triggers
 
@@ -447,6 +447,12 @@ exactly one context trigger:
 arrives with both `q` and `cgid` set. The shopper's own query is the stronger statement of
 intent, so it wins and `category` is dropped — the request is always one of the two shapes
 above, never a hybrid.
+
+Selected non-category filters other than brand are appended to that context as
+`<filter-id>:<value>` tokens. For example, a search for `smart` filtered to black becomes
+`smart color:black`, while a category `smartphones` with the same filter becomes
+`smartphones color:black`. The `products.ids` array is always the product list after SFCC
+has applied the refinements.
 
 For the search shape this is the documented behaviour: Topsort's *combining products and
 `searchQuery`* example states that the auction pool is the product set **plus** products
@@ -960,9 +966,10 @@ So the cache is suppressed when, and only when:
 - a new `tsuid` cookie was minted on this request (SFCC does not store `Set-Cookie` in the page
   cache, so that response has to be dynamic for the cookie to stick).
 
-Pages still cache normally when Topsort is disabled, when the shopper has refined the results,
-and when the auction returns no winners. Setting `topsortEnabled = false` restores the previous
-caching behaviour completely.
+Pages still cache normally when Topsort is disabled, when a brand filter suppresses the
+auction, and when the auction returns no winners. Other refinements can now produce sponsored
+placements and therefore follow the same cache rules as an unfiltered auction. Setting
+`topsortEnabled = false` restores the previous caching behaviour completely.
 
 ### Banners do not change any of this
 

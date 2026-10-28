@@ -119,7 +119,7 @@
                         </isif>
                         <div class="shipping-compare-section">
                             <div class="shipping-section">
-                                <isinclude url="${URLUtils.url("Tile-ShowShippingMethods", "pid", product.id)}" sf-toolkit="on" />
+                                <isinclude url="${URLUtils.url("Tile-ShowShippingMethods", "pid", product.id, "comuna", !empty(session.custom.preferredComunaCode) ? session.custom.preferredComunaCode : "", "region", !empty(session.custom.preferredRegionCode) ? session.custom.preferredRegionCode : "", "regionRange", !empty(session.custom.regionRange) ? session.custom.regionRange : "")}" sf-toolkit="on" />
                             </div>
                             <isif condition="${pdict.yotpoWidgetData && pdict.yotpoWidgetData.isRatingsEnabled}">
                                 <div class="stars-section-grid bottom-stars">

@@ -8,23 +8,83 @@ var topsortSession = require("*/cartridge/scripts/helpers/topsortSession");
 var TopsortService = require("*/cartridge/scripts/services/TopsortService");
 
 var SLOTS = 6;
+var BRAND_REFINEMENT_ID = "brand";
 
 /**
- * Reports whether the shopper has selected any refinement other than a category.
- * Sponsored products are suppressed on refined result sets by design.
+ * Returns a stable string representation of a selected refinement value.
+ *
+ * @param {Object} value - SFRA refinement value
+ * @returns {string} Refinement value suitable for the auction context
+ */
+function getRefinementValue(value) {
+    if (value.value !== null && value.value !== undefined) {
+        return String(value.value);
+    }
+    if (value.valueFrom !== undefined && value.valueTo !== undefined) {
+        return String(value.valueFrom) + "-" + String(value.valueTo);
+    }
+    if (value.displayValue !== null && value.displayValue !== undefined) {
+        return String(value.displayValue);
+    }
+    return "";
+}
+
+/**
+ * Collects selected filters other than the category navigation refinement.
+ *
+ * HITES extends the SFRA refinement model with the underlying definition id, so filter
+ * types can be identified without relying on translated display names.
  *
  * @param {Object} productSearch - SFRA productSearch model
- * @returns {boolean} True when at least one non-category refinement value is selected
+ * @returns {Array<Object>} Selected filter id/value pairs
  */
-function hasSelectedNonCategoryRefinement(productSearch) {
-    return (productSearch.refinements || []).some(function (refGroup) {
-        if (refGroup.isCategoryRefinement) {
-            return false;
+function getSelectedFilters(productSearch) {
+    return (productSearch.refinements || []).reduce(function (selected, refGroup) {
+        if (!refGroup || refGroup.isCategoryRefinement) {
+            return selected;
         }
-        return (refGroup.values || []).some(function (val) {
-            return val.selected;
+
+        (refGroup.values || []).forEach(function (value) {
+            var refinementValue = value && value.selected ? getRefinementValue(value) : "";
+            if (refinementValue) {
+                selected.push({
+                    id: String(refGroup.id || refGroup.displayName || "filter"),
+                    value: refinementValue
+                });
+            }
         });
+
+        return selected;
+    }, []);
+}
+
+/**
+ * Reports whether the shopper selected a brand filter.
+ *
+ * @param {Array<Object>} selectedFilters - Selected filter id/value pairs
+ * @returns {boolean} True when brand is among the selected filters
+ */
+function hasSelectedBrandFilter(selectedFilters) {
+    return selectedFilters.some(function (filter) {
+        return filter.id.toLowerCase() === BRAND_REFINEMENT_ID;
     });
+}
+
+/**
+ * Appends selected filter context to a search query or category id.
+ *
+ * @param {string|null} context - Original search query or normalized category id
+ * @param {Array<Object>} selectedFilters - Selected filter id/value pairs
+ * @returns {string|null} Context with selected filters appended
+ */
+function appendFiltersToContext(context, selectedFilters) {
+    if (!context || !selectedFilters.length) {
+        return context;
+    }
+
+    return context + " " + selectedFilters.map(function (filter) {
+        return filter.id + ":" + filter.value;
+    }).join(" ");
 }
 
 /**
@@ -154,8 +214,8 @@ function hasSponsoredProducts(productSearch) {
  * productSearch.productIds in place.
  *
  * Fail-open: when Topsort is disabled, the request falls outside the configured share of
- * traffic, the shopper has refined the results, or the API call fails, the organic grid is
- * left exactly as it was and the response stays cacheable.
+ * traffic, a brand filter is selected, or the API call fails, the organic grid is left
+ * exactly as it was and the response stays cacheable.
  *
  * @param {Object} productSearch - SFRA productSearch model whose productIds are merged
  * @param {Object} options - Auction context
@@ -184,7 +244,8 @@ function applyListingsAuction(productSearch, options) {
         return result;
     }
 
-    if (hasSelectedNonCategoryRefinement(productSearch)) {
+    var selectedFilters = getSelectedFilters(productSearch);
+    if (hasSelectedBrandFilter(selectedFilters)) {
         return result;
     }
 
@@ -205,6 +266,8 @@ function applyListingsAuction(productSearch, options) {
     var searchQuery = options && options.searchQuery ? options.searchQuery : null;
     var categoryId = !searchQuery && options && options.categoryId ? options.categoryId : null;
     var sluggedCategoryId = topsortHelpers.resolveTopsortCategoryId(categoryId);
+    searchQuery = appendFiltersToContext(searchQuery, selectedFilters);
+    sluggedCategoryId = appendFiltersToContext(sluggedCategoryId, selectedFilters);
 
     var listingsAuction = topsortHelpers.createListingsAuction({
         type: "listings",
