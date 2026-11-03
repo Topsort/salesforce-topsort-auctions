@@ -8,7 +8,7 @@ server.extend(module.superModule);
 * @param {dw.system.Request} req - The HTTP request object.
 * @param {dw.system.Response} res - The HTTP response object.
 * @param {Function} next - The callback to pass control to the next middleware.
-* 
+*
 * Adds the 'isSponsored' query string parameter to the response's view data and proceeds to the next middleware.
 */
 server.append("Show", function (req, res, next) {

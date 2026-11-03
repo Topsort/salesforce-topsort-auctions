@@ -27,6 +27,22 @@
                 <min-length>0</min-length>
                 <default-value>https://api.topsort.com</default-value>
             </attribute-definition>
+            <attribute-definition attribute-id="topsortBannersEnabled">
+                <display-name xml:lang="x-default">Enable Topsort Sponsored Banners</display-name>
+                <description xml:lang="x-default">When enabled, the configured banner slots run an auction and render the winning creative. Independent of sponsored listings, and off by default: each rendered slot is an extra call to Topsort on the critical path, so turn it on only once the slots exist in the Topsort dashboard. Requires topsortEnabled as well.</description>
+                <type>boolean</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <default-value>false</default-value>
+            </attribute-definition>
+            <attribute-definition attribute-id="topsortBannerAssetHosts">
+                <display-name xml:lang="x-default">Topsort Banner Asset Hosts</display-name>
+                <description xml:lang="x-default">Comma-separated exact hostnames allowed to serve banner creatives. Find the CDN hostname in a real auction response and configure it before enabling banners.</description>
+                <type>string</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <min-length>0</min-length>
+            </attribute-definition>
             <attribute-definition attribute-id="topsortTrackingEnabled">
                 <display-name xml:lang="x-default">Enable Topsort Event Tracking</display-name>
                 <description xml:lang="x-default">Enable tracking of impressions, clicks, and purchases for Topsort sponsored products</description>
@@ -35,15 +51,39 @@
                 <externally-managed-flag>false</externally-managed-flag>
                 <default-value>true</default-value>
             </attribute-definition>
+            <attribute-definition attribute-id="topsortAuctionTrafficPercent">
+                <display-name xml:lang="x-default">Topsort Auction Traffic Share (%)</display-name>
+                <description xml:lang="x-default">Share of listing page requests the auction runs on, 0 to 100. A page carrying auction results cannot be page cached, so this controls how much of the storefront gives up the page cache and calls Topsort on every render. Ramp it up while watching uncached listing page response times, then leave it at 100.</description>
+                <type>int</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <min-value>0</min-value>
+                <max-value>100</max-value>
+                <default-value>100</default-value>
+            </attribute-definition>
         </custom-attribute-definitions>
         <group-definitions>
             <attribute-group group-id="Topsort">
                 <display-name xml:lang="x-default">Topsort</display-name>
                 <attribute attribute-id="topsortEnabled"/>
+                <attribute attribute-id="topsortBannersEnabled"/>
+                <attribute attribute-id="topsortBannerAssetHosts"/>
                 <attribute attribute-id="topsortApiKey"/>
                 <attribute attribute-id="topsortApiURL"/>
                 <attribute attribute-id="topsortTrackingEnabled"/>
+                <attribute attribute-id="topsortAuctionTrafficPercent"/>
             </attribute-group>
         </group-definitions>
+    </type-extension>
+    <type-extension type-id="Order">
+        <custom-attribute-definitions>
+            <attribute-definition attribute-id="topsortPurchaseTracked">
+                <display-name xml:lang="x-default">Topsort Purchase Reported</display-name>
+                <description xml:lang="x-default">Set once the purchase event for this order has been reported to Topsort, so a refresh of the confirmation page does not report it twice</description>
+                <type>boolean</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+            </attribute-definition>
+        </custom-attribute-definitions>
     </type-extension>
 </metadata>

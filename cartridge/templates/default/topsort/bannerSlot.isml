@@ -1,0 +1,33 @@
+<iscomment>
+    Places one banner slot on a listing page.
+
+    Reads four page scoped variables the including template sets just above it:
+
+      tsSlotId       the configured slot to render
+      tsSlotClass    extra classes for the wrapper, or empty
+      tsCategoryId   category being browsed, or empty
+      tsSearchQuery  shopper search term, or empty
+
+    tsSlotClass exists because the side banner has to be a direct child of the column to be
+    sticky - a sticky element can only travel inside its own parent, so wrapping it in a
+    responsive div sized to the banner would pin it in place. The responsive class goes on
+    this wrapper instead.
+
+    Empty context parameters are passed through rather than omitted, because building the URL
+    conditionally would need script scope and page variables only reach an included template
+    through expressions. The controller reads a blank parameter as absent.
+
+    The banner arrives through a remote include rather than being auctioned in the page, so
+    the listing page keeps whatever caching it has today - see the page cache notes in the
+    README. The wrapper is always emitted, even when no bid wins, because the fragment needs
+    an element of its own to remove in that case.
+</iscomment>
+<isscript>
+    // Registered from here rather than from the fragment. A remote include renders no
+    // decorator, so an assets.addCss inside it would be collected and then thrown away with
+    // the fragment's own request - the stylesheet has to be asked for by the page.
+    require('*/cartridge/scripts/assets').addCss('/css/topsort-sponsored.css');
+</isscript>
+<div class="ts-banner-slot ts-banner-slot--${tsSlotId} ${tsSlotClass || ''}">
+    <isinclude url="${URLUtils.url('Topsort-Banner', 'slotId', tsSlotId, 'cgid', tsCategoryId || '', 'q', tsSearchQuery || '', 'preserveWrapper', 'true')}" />
+</div>

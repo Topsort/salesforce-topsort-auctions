@@ -1,0 +1,104 @@
+<iscomment>
+    Renders one sponsored banner, or nothing at all.
+
+    Rendered by Topsort-Banner as a remote include, so this is the whole body of that
+    fragment. Every placement - the two home carousel slides, the home full width row, the
+    PLP side rail and the PLP footer - goes through here, so a banner looks and reports the
+    same wherever it lands. Placement specific layout is left to the
+    ts-banner-slot--<slot> wrapper class.
+
+    When there is no winner this still emits a script, because rendering nothing is not
+    quite enough on the home page: Page Designer wraps every component in a div of its own,
+    and an empty one of those inside the hero carousel is a blank slide the shopper can
+    swipe to. The script removes that wrapper. It runs while the document is parsed, and
+    the carousel is initialised on ready, so the node is gone before slick counts slides.
+</iscomment>
+
+<isif condition="${pdict.banner}">
+    <isscript>
+        var tsBannerDefault = pdict.banner.assets[pdict.banner.assets.length - 1];
+
+        var tsBannerTracking = require('*/cartridge/scripts/helpers/topsortHelpers').toScriptJson({
+            resolvedBidId: pdict.banner.resolvedBidId,
+            eventToken: pdict.banner.eventToken,
+            position: pdict.banner.position,
+            categoryId: pdict.banner.categoryId,
+            searchQuery: pdict.banner.searchQuery
+        });
+
+        // Width descriptors let the browser pick a source using the space the banner
+        // actually occupies and the device pixel ratio, which is the choice Topsort's two
+        // sizes per slot exist to offer. Built here rather than in the template so the
+        // trailing comma handling stays out of the markup.
+        var tsBannerSrcset = pdict.banner.assets.filter(function (asset) {
+            return asset.width;
+        }).map(function (asset) {
+            return asset.url + ' ' + asset.width + 'w';
+        }).join(', ');
+    </isscript>
+
+    <isinclude template="topsort/trackingInit" />
+
+    <div class="ts-banner ts-banner--${pdict.banner.slotId}"
+         data-ts-slot="${pdict.banner.slotId}"
+         data-ts-bid-id="${pdict.banner.resolvedBidId}">
+        <isif condition="${pdict.banner.destination}">
+            <a href="${pdict.banner.destination}" rel="nofollow sponsored" class="ts-banner__link">
+        </isif>
+
+        <picture>
+            <img src="${tsBannerDefault.url}"
+                 <isif condition="${tsBannerSrcset}">srcset="${tsBannerSrcset}"</isif>
+                 <isif condition="${pdict.banner.sizes}">sizes="${pdict.banner.sizes}"</isif>
+                 <isif condition="${tsBannerDefault.width}">width="${tsBannerDefault.width}"</isif>
+                 <isif condition="${tsBannerDefault.height}">height="${tsBannerDefault.height}"</isif>
+                 alt="${Resource.msg('label.banner.alt', 'topsort', null)}"
+                 loading="lazy"
+                 class="ts-banner__image" />
+        </picture>
+
+        <isif condition="${pdict.banner.destination}">
+            </a>
+        </isif>
+
+        <span class="ts-banner__label">${Resource.msg('label.sponsored', 'topsort', null)}</span>
+    </div>
+
+    <script>
+        if (window.ProductEngagement) {
+            ProductEngagement.setupContentTracking(<isprint value="${tsBannerTracking}" encoding="off"/>);
+        } else {
+            window.topsortTrackingQueue = window.topsortTrackingQueue || [];
+            window.topsortTrackingQueue.push({
+                method: 'setupContentTracking',
+                params: <isprint value="${tsBannerTracking}" encoding="off"/>
+            });
+        }
+    </script>
+<iselse/>
+    <script>
+        (function () {
+            var script = document.currentScript;
+            if (!script) {
+                return;
+            }
+
+            // The wrapper is whatever element the including page put this fragment in: the
+            // Page Designer component div on the home page, or the placeholder div in the
+            // PLP templates. Only remove it when this script is all it turned out to hold,
+            // so a markup change upstream can never make this delete real content.
+            var wrapper = script.parentNode;
+            if (!wrapper || !wrapper.parentNode || wrapper === document.body) {
+                return;
+            }
+
+            if (!wrapper.querySelector('*:not(script)')) {
+                <isif condition="${pdict.preserveWrapper}">
+                    wrapper.style.display = 'none';
+                <iselse/>
+                    wrapper.parentNode.removeChild(wrapper);
+                </isif>
+            }
+        })();
+    </script>
+</isif>

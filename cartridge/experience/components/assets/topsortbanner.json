@@ -1,0 +1,23 @@
+{
+    "name": "Topsort - Sponsored Banner",
+    "description": "Renders the winning banner for one Topsort slot. Place it where the slot is configured to appear: the hero carousel slides for home-slider-5 and home-slider-6, or a full width row for home-banner-full. Nothing is rendered when no campaign wins the slot.",
+    "group": "assets",
+    "attribute_definition_groups": [
+        {
+            "id": "topsort",
+            "name": "Topsort",
+            "description": "Which configured banner slot this component fills.",
+            "attribute_definitions": [
+                {
+                    "id": "slotId",
+                    "name": "Banner slot",
+                    "description": "Must match a slot configured both in cartridge/scripts/config/topsort_banners.json and in the Topsort dashboard. The creative size an advertiser can upload is set per slot, so this also decides how the banner is shaped.",
+                    "type": "enum",
+                    "values": ["home-slider-5", "home-slider-6", "home-banner-full"],
+                    "required": true
+                }
+            ]
+        }
+    ],
+    "region_definitions": []
+}
