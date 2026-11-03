@@ -301,8 +301,67 @@ function resolveBanner(slotId, ctx) {
     return winner;
 }
 
+// Joins a resolvedBidId and its proof. Neither is ever built from characters outside the
+// base64url alphabet, which does not contain it.
+var SIGNED_BID_SEPARATOR = "~";
+
+/**
+ * Maps a resolved banner onto the winner shape banners.js expects from /v2/auctions.
+ *
+ * banners.js hands the winner object to window.TS_BANNERS.getBannerElement unchanged, so the
+ * already vetted destination and srcset ride along with it and the browser never has to
+ * judge an advertiser-controlled value itself.
+ *
+ * The event proof is folded into resolvedBidId because that is the only value analytics.js
+ * reports back; Topsort-BannersApi splits it off again before anything reaches Topsort.
+ *
+ * @param {Object} banner - A banner returned by resolveBanner
+ * @returns {Object} The winner as banners.js reads it, plus href, srcset, sizes, width, height
+ */
+function toBannersJsWinner(banner) {
+    var defaultAsset = banner.assets[banner.assets.length - 1];
+
+    return {
+        rank: 1,
+        type: "url",
+        id: banner.destination || "",
+        resolvedBidId: banner.resolvedBidId + SIGNED_BID_SEPARATOR + banner.eventToken,
+        asset: [{ url: defaultAsset.url }],
+        href: banner.destination,
+        srcset: banner.assets.filter(function (asset) {
+            return asset.width;
+        }).map(function (asset) {
+            return asset.url + " " + asset.width + "w";
+        }).join(", "),
+        sizes: banner.sizes,
+        width: defaultAsset.width,
+        height: defaultAsset.height
+    };
+}
+
+/**
+ * Splits a bid issued by toBannersJsWinner back into the bid and its proof.
+ *
+ * @param {*} value - Untrusted resolvedBidId reported by analytics.js
+ * @returns {Object|null} { resolvedBidId, eventToken }, or null when it is not a signed bid
+ */
+function splitSignedBidId(value) {
+    if (typeof value !== "string") {
+        return null;
+    }
+
+    var parts = value.split(SIGNED_BID_SEPARATOR);
+    if (parts.length !== 2 || !parts[0] || !parts[1]) {
+        return null;
+    }
+
+    return { resolvedBidId: parts[0], eventToken: parts[1] };
+}
+
 module.exports = {
     getSlot: getSlot,
+    splitSignedBidId: splitSignedBidId,
+    toBannersJsWinner: toBannersJsWinner,
     isSlotOnDevice: isSlotOnDevice,
     isAllowedAssetUrl: isAllowedAssetUrl,
     buildAuction: buildAuction,
