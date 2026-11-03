@@ -21,7 +21,7 @@
         "slots": 1,
         "position": 3,
         "devices": ["desktop", "mobile"],
-        "sizes": "100vw"
+        "sizes": "(min-width: 1310px) 1310px, 100vw"
     },
     {
         "slotId": "search-side",

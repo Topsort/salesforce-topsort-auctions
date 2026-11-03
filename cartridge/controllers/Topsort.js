@@ -156,37 +156,57 @@ function isJsonRequest() {
 }
 
 /**
- * Relays the interaction events in the request body to Topsort.
+ * Parses the JSON request body, answering the request itself when the body is unusable.
  *
  * @param {Object} res - The response object used to send the HTTP response.
+ * @returns {Object|null} The parsed body, or null when a response has already been sent
  */
-function relayEvents(res) {
-    if (!TopsortService.getConfig().trackingEnabled) {
-        res.json({ success: false });
-        return;
-    }
-
+function readJsonPayload(res) {
     var requestBody = request.httpParameterMap.requestBodyAsString || "";
     if (requestBody.length > MAX_REQUEST_LENGTH) {
         res.setStatusCode(413);
         res.json({ success: false });
-        return;
+        return null;
     }
 
     var payload;
     try {
         payload = JSON.parse(requestBody);
     } catch (e) {
-        Logger.warn("Topsort-Event received a request body that is not valid JSON");
+        Logger.warn("{0} received a request body that is not valid JSON", request.httpPath);
         res.setStatusCode(400);
         res.json({ success: false });
-        return;
+        return null;
     }
 
     if (!payload || typeof payload !== "object") {
         res.setStatusCode(400);
         res.json({ success: false });
+        return null;
+    }
+
+    return payload;
+}
+
+/**
+ * Relays the interaction events in the request body to Topsort.
+ *
+ * @param {Object} res - The response object used to send the HTTP response.
+ * @param {Function} [normalize] - Maps a differently shaped payload onto the one sanitizeEvent reads
+ */
+function relayEvents(res, normalize) {
+    if (!TopsortService.getConfig().trackingEnabled) {
+        res.json({ success: false });
         return;
+    }
+
+    var payload = readJsonPayload(res);
+    if (!payload) {
+        return;
+    }
+
+    if (normalize) {
+        payload = normalize(payload);
     }
 
     var opaqueUserId = topsortSession.getOpaqueUserId();
@@ -322,6 +342,122 @@ server.get("Banner", server.middleware.include, function (req, res, next) {
         banner: banner,
         preserveWrapper: req.querystring.preserveWrapper === "true"
     });
+
+    return next();
+});
+
+/**
+ * Rewrites analytics.js events into the shape sanitizeEvent reads.
+ *
+ * analytics.js only knows the resolvedBidId it found on the banner, so the proof that
+ * Topsort-BannersApi issued that bid travels inside it (see topsortBanners.toBannersJsWinner).
+ * Everything else analytics.js sends is rebuilt server-side or dropped, as on Topsort-Event.
+ *
+ * @param {Object} payload - Untrusted analytics.js event batch
+ * @returns {Object} The batch as { impressions, clicks } with resolvedBidId and eventToken split
+ */
+function normalizeBannersJsEvents(payload) {
+    var normalized = {};
+
+    ACCEPTED_EVENT_TYPES.forEach(function (eventType) {
+        if (!Array.isArray(payload[eventType])) {
+            return;
+        }
+        normalized[eventType] = payload[eventType].map(function (raw) {
+            var signedBid = topsortBanners.splitSignedBidId(raw && raw.resolvedBidId);
+            return signedBid && {
+                resolvedBidId: signedBid.resolvedBidId,
+                eventToken: signedBid.eventToken,
+                placement: raw.placement
+            };
+        });
+    });
+
+    return normalized;
+}
+
+/**
+ * Answers a banners.js auction for one home slot.
+ *
+ * Only the slotId is read from the request. The trigger, device, opaque user id and every
+ * kill switch are resolved server-side by topsortBanners.resolveBanner, exactly as for the
+ * remote include, and only home slots are accepted so a crafted request cannot run a search
+ * or category auction from here.
+ *
+ * @param {Object} res - The response object used to send the HTTP response.
+ */
+function proxyBannerAuction(res) {
+    var payload = readJsonPayload(res);
+    if (!payload) {
+        return;
+    }
+
+    var auction = Array.isArray(payload.auctions) ? payload.auctions[0] : null;
+    var slotId = auction ? toBoundedString(auction.slotId, MAX_STRING_LENGTH) : null;
+    var slot = topsortBanners.getSlot(slotId);
+    var winners = [];
+
+    if (slot && slot.page === "home") {
+        var banner = topsortBanners.resolveBanner(slotId, {});
+        if (banner) {
+            winners.push(topsortBanners.toBannersJsWinner(banner));
+        }
+    } else {
+        Logger.warn("Topsort-BannersApi rejected an auction for slot {0}", slotId);
+    }
+
+    res.json({ results: [{ resultType: "banners", winners: winners }] });
+}
+
+/**
+ * Topsort-BannersApi : Same-origin stand-in for api.topsort.com, used by banners.js and
+ * analytics.js on the home page.
+ *
+ * Both libraries take a base URL in window.TS.url and append "/v2/auctions" or "/v2/events"
+ * to it. The home page sets that base to this route followed by "?path=", so the appended
+ * path arrives as the path query parameter. The marketplace API key and the shopper's opaque
+ * user id therefore stay server-side, and banner events carry the same identity as purchases.
+ *
+ * There is no CSRF token, because analytics.js cannot send one. Events are instead accepted
+ * only from the same origin, as JSON, and for a bid carrying the HMAC proof issued with it.
+ *
+ * @name Base/Topsort-BannersApi
+ * @function
+ * @memberof Topsort
+ * @param {querystringparameter} - path - "/v2/auctions" or "/v2/events"
+ * @param {httpparameter} - body - JSON auction request or event batch
+ * @param {category} - non-sensitive
+ * @param {returns} - json
+ * @param {serverfunction} - post
+ */
+server.post("BannersApi", server.middleware.https, function (req, res, next) {
+    res.cachePeriod = 0; // eslint-disable-line no-param-reassign
+
+    if (!isSameOriginRequest() || !isJsonRequest()) {
+        res.setStatusCode(403);
+        res.json({ success: false });
+        return next();
+    }
+
+    var path = req.querystring.path;
+
+    try {
+        if (path === "/v2/auctions") {
+            proxyBannerAuction(res);
+        } else if (path === "/v2/events") {
+            relayEvents(res, normalizeBannersJsEvents);
+        } else {
+            res.setStatusCode(404);
+            res.json({ success: false });
+        }
+    } catch (e) {
+        Logger.error("Topsort-BannersApi could not handle {0}: {1}", path, e.message);
+        // An auction that fails answers with no winners, which banners.js shows as an empty
+        // slot rather than an error. An event batch answers as a rejected one would.
+        res.json(path === "/v2/auctions"
+            ? { results: [{ resultType: "banners", winners: [] }] }
+            : { success: false });
+    }
 
     return next();
 });
