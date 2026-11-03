@@ -85,6 +85,37 @@
     width: 100%;
 }
 
+// Home page slots, filled client side by topsort-home-banners.js.
+//
+// While the auction runs the placeholder holds the height of the creative it is waiting for,
+// at the sizes agreed with HITES for the slot, so a carousel slide does not change height
+// under the shopper and the full width row does not push the page down when it fills. Once
+// a banner is in, the creative sets the height itself. The mobile ratio follows the same
+// breakpoint the HITES hero <picture> elements switch at.
+.ts-home-slot {
+    overflow: hidden;
+
+    &--slide {
+        aspect-ratio: 2680 / 821;
+
+        @media (max-width: 767.98px) {
+            aspect-ratio: 720 / 857;
+        }
+    }
+
+    &--full {
+        aspect-ratio: 2620 / 323;
+
+        @media (max-width: 767.98px) {
+            aspect-ratio: 706 / 365;
+        }
+    }
+
+    &--filled {
+        aspect-ratio: auto;
+    }
+}
+
 // Shown in the Page Designer editor in place of a banner, which otherwise renders nothing
 // there and leaves the merchandiser an invisible component they cannot select.
 .ts-banner-placeholder {
