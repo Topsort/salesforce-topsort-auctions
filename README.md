@@ -58,12 +58,13 @@ following records live outside the cartridge:
 
 - Site preferences, service credentials and the `topsort` service profile in Business Manager.
 - The Cartridge Path and active code version.
-- The three `Topsort - Sponsored Banner` component placements on the Page Designer home page.
+- The three home slot placeholders (`.ts-home-slot`) HITES pasted into the home content slots.
 - Banner slots, campaigns and creatives configured in Topsort.
 
 Those external records do not execute Topsort code after the cartridge is removed. They remain
 as configuration and content references. For a clean physical rollback, HITES should also
-remove the three Page Designer components or restore the previous home page version.
+remove the three placeholders from the home content slots. Left in place, they are removed
+from the page by nothing once the cartridge is gone, and show up as empty carousel slides.
 
 HITES can disable the integration without a deployment by setting:
 
@@ -284,7 +285,7 @@ Then invalidate the code cache in Business Manager.
 | Winner placement | Product grid | Positions 0–1, 6–7, and the end of the grid |
 | SKU deduplication | Product grid | A winner already in the organic results is moved, not duplicated |
 | "Patrocinado" label | Product tile and banner | Localised through a resource bundle |
-| Sponsored banners | Home page, search and category pages | Seven slots, one auction each, fetched through a remote include |
+| Sponsored banners | Home page, search and category pages | Seven slots, one auction each. Search and category through a remote include; home through banners.js and `Topsort-BannersApi` |
 | Impression tracking | Browser | Fires on real viewport visibility, batched per grid |
 | Click tracking | Browser | Fires on tile or banner click, `keepalive` so it survives navigation |
 | Purchase tracking | `Order-Confirm` | Server-side, token-validated, idempotent |
@@ -301,7 +302,9 @@ Then invalidate the code cache in Business Manager.
 | `Order-Confirm` | append | Purchase event |
 | `Tile-Show` | append | Passes `isSponsored` through to the tile |
 | `Topsort-Event` | new (POST) | Relays browser impressions and clicks to Topsort |
-| `Topsort-Banner` | new (GET, remote include only) | Runs the auction for one banner slot and renders the winner |
+| `Topsort-Banner` | new (GET, remote include only) | Runs the auction for one search or category banner slot and renders the winner |
+| `Topsort-BannersApi` | new (POST) | Same-origin stand-in for `api.topsort.com` used by banners.js and analytics.js on the home page: home auctions and banner events |
+| `Home-Show` | append | Loads `topsort-home-banners.js` and the banner stylesheet |
 
 ---
 
@@ -359,16 +362,19 @@ handled by the controller, there is no path where both fire.
 cartridge/
 ├── client/default/
 │   ├── js/product-engagement.js .......... browser tracking library (webpack entry)
+│   ├── js/topsort-home-banners.js ........ fills the home slots with banners.js (webpack entry)
 │   └── css/topsort-sponsored.scss ........ Patrocinado label + banner styles (webpack entry)
+├── static/default/lib/topsort/ .......... vendored banners.js 0.12.0 + analytics.js 2.12.1 (committed, not built)
 ├── controllers/
 │   ├── Search.js ......................... auction on Show / ShowAjax
 │   ├── Order.js .......................... purchase event on Confirm
 │   ├── Tile.js ........................... isSponsored flag for the tile
-│   └── Topsort.js ........................ Topsort-Event relay + Topsort-Banner fragment
+│   ├── Home.js ........................... loads the home banner script on Home-Show
+│   └── Topsort.js ........................ Topsort-Event relay, Topsort-Banner fragment, Topsort-BannersApi
 ├── experience/components/
 │   ├── dynamic/productList.js ............ thin wrapper over the HITES PD component
 │   ├── dynamic/productList.json .......... PD component definition
-│   ├── assets/topsortbanner.js ........... PD banner component render
+│   ├── assets/topsortbanner.js ........... PD banner component render (superseded on the home page)
 │   └── assets/topsortbanner.json ......... PD banner component definition
 ├── scripts/
 │   ├── config/topsort_banners.json ....... the seven banner slots
@@ -609,7 +615,7 @@ versa.
 | --- | --- | --- | --- |
 | `home-slider-5` | Home | desktop, mobile | 5th slide of the hero carousel |
 | `home-slider-6` | Home | desktop, mobile | 6th slide of the hero carousel |
-| `home-banner-full` | Home | desktop, mobile | The full width "banner full" row, 5th row of the page |
+| `home-banner-full` | Home | desktop, mobile | A full width row reserved for Topsort; no HITES content behind it |
 | `search-side` | Search | **desktop only** | Left rail under the filters, sticky |
 | `search-bottom` | Search | desktop, mobile | Full width, below the whole grid |
 | `category-side` | Category | **desktop only** | Left rail under the filters, sticky |
@@ -635,7 +641,11 @@ built, which matters because the slot arrives in a query string a shopper can ed
 
 ### Why banners are a remote include
 
-Every banner is fetched by `Topsort-Banner`, a fragment pulled in with `<isinclude url="…">`,
+> This section describes the **search and category** slots. The home slots run client side
+> through banners.js, because HITES edits the home page as plain HTML and cannot place an
+> include there — see [Home page banners (banners.js)](#home-page-banners-bannersjs).
+
+Every search and category banner is fetched by `Topsort-Banner`, a fragment pulled in with `<isinclude url="…">`,
 rather than auctioned inside the page that shows it.
 
 A response holding a `resolvedBidId` **cannot be page cached**: a cached copy would report
@@ -649,16 +659,15 @@ the fragment is dynamic (`cachePeriod = 0`), so **enabling banners changes no pa
 behaviour**. PLP caching stays driven solely by sponsored listings, exactly as it is today —
 `topsortListings.js` is not involved in banners at all.
 
-The price is **one auction per rendered slot** instead of one per page: up to three on the
-home page, up to two on a PLP. The storefront already remote-includes every product tile, so
+The price is **one auction per rendered slot** instead of one per page: up to two on a PLP. The storefront already remote-includes every product tile, so
 the extra sub-requests are not new in kind, but they do sit on the critical path. Cutting the
 service timeout (see [Page cache impact](#page-cache-impact)) matters more with banners on.
 
 ```
-Home page (cached)                 PLP (cached unless listings won)
-  └─ PD component ×3                 └─ bannerSlot.isml ×2
-       └─ isinclude ──┐                   └─ isinclude ──┐
-                      ▼                                  ▼
+PLP (cached unless listings won)
+  └─ bannerSlot.isml ×2
+       └─ isinclude ──┐
+                      ▼
                  Topsort-Banner  (server.middleware.include, cachePeriod = 0)
                       │  slotId allowlist → device check → topsortBannersEnabled
                       ▼
@@ -768,22 +777,86 @@ This preserves auction and event attribution without placing competing UUIDs on 
 giving up the surrounding page cache. The normal listings path still creates the durable
 `tsuid` cookie when an eligible product listing page runs.
 
-### Placing the home page banners
+### Home page banners (banners.js)
 
-The three home slots are filled by a Page Designer component, **Topsort - Sponsored Banner**
-(`assets.topsortbanner`), with a `slotId` picker limited to the three home slot ids.
+HITES edits the home page as plain HTML in content slots — no ISML, no Page Designer — so the
+home slots cannot use the remote include. They run in the browser with Topsort's
+[banners.js](https://docs.topsort.com/en/ad-platform/banners/bannersjs) (auction and render)
+and [analytics.js](https://docs.topsort.com/en/ad-platform/listings/analytics-js) (impressions
+and clicks), both vendored and version-pinned under `cartridge/static/default/lib/topsort/`.
 
-1. Open the `homePage` page in Page Designer.
-2. Drop one into the Hero Banner Carousel `slides` region at position 5, set its slot to
-   `home-slider-5`. Repeat at position 6 with `home-slider-6`.
-3. Drop one into the full width "banner full" row, set its slot to `home-banner-full`.
+**What HITES pastes.** One placeholder per slot, as plain HTML where the banner goes. It is an
+inert `div`, so it survives a pure HTML content slot and is copied harmlessly by slick:
 
-Both regions use `component_type_exclusions`, which is a denylist, so this new type is allowed
-without any change to `module_pagedesigner`. In the editor the component draws a labelled
-placeholder — a banner has no winner at design time and would otherwise be invisible and
-unselectable.
+```html
+<!-- Hero carousel: the 5th and 6th slides of the hero slot -->
+<div class="clp-hero-banner ts-home-slot ts-home-slot--slide" data-ts-slot="home-slider-5"></div>
+<div class="clp-hero-banner ts-home-slot ts-home-slot--slide" data-ts-slot="home-slider-6"></div>
 
-The search and category placements need no merchandising: they are in the template overrides.
+<!-- Full width row reserved for Topsort -->
+<div class="ts-home-slot ts-home-slot--full" data-ts-slot="home-banner-full"></div>
+```
+
+"Position 5 and 6" is the placeholder's order among the hero slot's slides. Removing or
+unpublishing a placeholder stops that slot cleanly. The class and `data-ts-slot` must not be
+renamed. Nothing else is needed from HITES: `Home-Show` loads the script.
+
+**How it runs.**
+
+```
+Home page (cached, unchanged)
+  └─ Home-Show append → assets.addJs(topsort-home-banners.js?enabled=…&api=…)
+        │  enabled = topsortEnabled && topsortBannersEnabled && topsortTrackingEnabled
+        ├─ off, or a browser without custom elements → placeholders removed before slick runs
+        └─ on → window.TS.url = Topsort-BannersApi?path=   (token is a dummy)
+              loads analytics.js, then banners.js
+              after slick initialises: <topsort-banner id="slot"> in each original slide
+                   ▼
+              POST Topsort-BannersApi?path=/v2/auctions   (banners.js appends the path)
+                   │  same origin + JSON → home slots only → topsortBanners.resolveBanner
+                   ▼
+              winner → TS_BANNERS.getBannerElement → banner.isml markup + Patrocinado
+              POST Topsort-BannersApi?path=/v2/events     (analytics.js impressions,
+                                                           glue clicks with keepalive)
+```
+
+- **The API key stays server-side.** banners.js and analytics.js both build their request URL
+  as `${window.TS.url}/v2/…`, so a base ending in `?path=` turns the Topsort path into a query
+  parameter of one storefront route. `Topsort-BannersApi` reads only `slotId` from the
+  auction body and runs the same `resolveBanner` as the remote include — kill switches, traffic
+  share, device check, asset host allowlist and link filtering all apply unchanged.
+- **One identity with purchases.** The auction and events use the server's opaque user id
+  (`tsuid`, or the session HMAC before it exists), the one `Order-Confirm` reports purchases
+  under. `window.TS.getUserId` is set so analytics.js never writes its own JS `tsuid`, which
+  would collide with the HttpOnly cookie.
+- **Event proof without CSRF.** analytics.js cannot send the CSRF token `Topsort-Event`
+  requires, so the HMAC bid proof travels inside the `resolvedBidId` the proxy hands out
+  (`<bid>~<proof>`) and is split off and verified before anything reaches Topsort. Events are
+  accepted only same-origin, as JSON, for a bid this shopper was issued. Renders are dropped.
+- **Clicks.** analytics.js queues a click for 250 ms, and the navigation it starts usually
+  cancels it. The glue therefore also posts every banner click at once with `keepalive`. A
+  later copy from analytics.js is not billed twice: the event id is derived from type, bid
+  and shopper, and Topsort deduplicates on it.
+
+**The carousel.** The hero is slick with an infinite loop, which clones slides, and every
+connected `<topsort-banner>` runs an auction of its own. So the element is created only in the
+original slide after slick initialises, unwrapped into plain markup as soon as it settles,
+and mirrored into the clones. analytics.js counts one impression per page and bid, so the
+clone shown on wrap-around does not report a second one. A slot with no winner, an error, or
+no answer within 5 s is removed: `slickRemove` inside the carousel, highest index first, once
+every slot in it has settled, so a rebuild can never clone a pending `<topsort-banner>`.
+
+**Layout.** While the auction runs, the placeholder holds the height of the creative it is
+waiting for (`aspect-ratio` at the agreed sizes, mobile below 767.98px like the HITES hero
+`<picture>`), so a slide does not change height under the shopper.
+
+**Kill switch latency.** `enabled` is baked into the script URL inside the cached home page, so
+turning a switch off stops loading the libraries only once that cache entry expires. Auctions
+stop immediately regardless: `Topsort-BannersApi` returns no winners when banners are off, and
+the slots are removed.
+
+The Page Designer component `assets.topsortbanner` is superseded on the home page. It is left
+in place until it is confirmed that no Page Designer page references it.
 
 ### Creating the slots in Topsort
 
@@ -797,7 +870,7 @@ Landing page slots carry a `page` object; category and search slots do not. At l
 `desktop` and `mobile` dimensions is required, and a `409` means the `slotId` already exists.
 
 **Home** — all three are `landing`, and share one landing page record. Repeat with
-`home-slider-6` and `home-banner-full`:
+`home-slider-6`:
 
 ```bash
 curl -X POST https://api.topsort.com/public/v1/media-service/slots \
@@ -808,8 +881,25 @@ curl -X POST https://api.topsort.com/public/v1/media-service/slots \
   "position": "landing",
   "page": { "name": "Hites Homepage", "url": "https://www.hites.com/" },
   "dimensions": {
-    "desktop": { "width": 2880, "height": 800 },
-    "mobile":  { "width": 1500, "height": 1200 }
+    "desktop": { "width": 2680, "height": 821 },
+    "mobile":  { "width": 720, "height": 857 }
+  }
+}'
+```
+
+`home-banner-full` has its own shape:
+
+```bash
+curl -X POST https://api.topsort.com/public/v1/media-service/slots \
+  -H "Authorization: Bearer $TSC_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "slotId": "home-banner-full",
+  "position": "landing",
+  "page": { "name": "Hites Homepage", "url": "https://www.hites.com/" },
+  "dimensions": {
+    "desktop": { "width": 2620, "height": 323 },
+    "mobile":  { "width": 706, "height": 365 }
   }
 }'
 ```
@@ -892,7 +982,8 @@ The rendered width comes from the HITES grid: Bootstrap 4, `lg` at 992px, and
 
 | Slot | Rendered width | Suggested creative | Ratio |
 | --- | --- | --- | --- |
-| `home-slider-5`, `home-slider-6`, `home-banner-full` | Full viewport | **2880 × 800** desktop, **1500 × 1200** mobile | 3.6:1 / 1.25:1 |
+| `home-slider-5`, `home-slider-6` | Hero, up to 1340px | **2680 × 821** desktop, **720 × 857** mobile — agreed with HITES | 3.3:1 / 0.84:1 |
+| `home-banner-full` | Full width row, up to 1310px | **2620 × 323** desktop, **706 × 365** mobile — agreed with HITES | 8.1:1 / 1.9:1 |
 | `search-side`, `category-side` | ~205px at `lg`, ~305px at `xl` | **610 × 800** desktop only | 3:4 vertical |
 | `search-bottom`, `category-bottom` | Full viewport | **2880 × 640** desktop, **1500 × 800** mobile | 4.5:1 / 1.9:1 |
 
@@ -913,7 +1004,10 @@ per creative.
 | Symptom | Cause |
 | --- | --- |
 | No banner anywhere | `topsortEnabled` or `topsortBannersEnabled` is off. Both are needed |
-| `Topsort banner requested for an unconfigured slot` in the log | The `slotId` in the template or PD component is not in `topsort_banners.json` |
+| `Topsort banner requested for an unconfigured slot` in the log | The `slotId` in the template, PD component or home placeholder is not in `topsort_banners.json` |
+| `Topsort-BannersApi rejected an auction for slot …` | A home placeholder names a slot that is not a `home` slot in `topsort_banners.json` |
+| Home placeholders vanish, no `Topsort-BannersApi` request | `enabled=0` in the script URL (a switch is off, or the cached home page predates turning it on), or the browser lacks custom elements |
+| Empty slide stays in the hero carousel | `topsort-home-banners.js` did not load: check the `Home-Show` append ran (log category `SponsoredSearch`) and the code version has the compiled script |
 | Banner renders on desktop but not mobile | Expected for the side slots. Anything else means the creative for that device was never uploaded |
 | Empty slide in the hero carousel | The removal script did not run. Check the fragment actually rendered — an error in `Topsort-Banner` renders nothing at all, including the script |
 | Side banner scrolls away instead of sticking | It ended up inside `.product-filters-wrapper`, which is `overflow: hidden` and clips a sticky descendant. It has to be a sibling |
@@ -974,21 +1068,25 @@ placements and therefore follow the same cache rules as an unfiltered auction. S
 ### Banners do not change any of this
 
 Everything above is about **sponsored listings**. Banners were built specifically so they would
-not extend it: each one is fetched through the `Topsort-Banner` remote include, which is itself
-uncacheable, while the page that includes it keeps its own cache entry untouched. The home page
-stays fully cached and PLP caching stays driven solely by listings.
+not extend it. Search and category banners are fetched through the `Topsort-Banner` remote
+include, which is itself uncacheable, while the page that includes it keeps its own cache entry
+untouched. Home banners are fetched by the browser after the page has loaded, through
+`Topsort-BannersApi`. The home page stays fully cached and PLP caching stays driven solely by
+listings.
 
-What banners add instead is **requests**, not cache misses: up to three extra sub-requests on
-the home page and two on a PLP, each making one call to Topsort. Those calls are on the
-critical path of rendering the fragment, so the case for cutting `timeout-millis` below applies
-more strongly with banners enabled. `topsortBannersEnabled = false` removes them entirely.
+What banners add instead is **requests**, not cache misses: two extra sub-requests on a PLP,
+and three browser requests to `Topsort-BannersApi` on the home page, each making one call to
+Topsort. The PLP calls are on the critical path of rendering the fragment, so the case for
+cutting `timeout-millis` below applies more strongly with banners enabled.
+`topsortBannersEnabled = false` removes them entirely.
 
 > **Read the paragraph above sceptically — it is true and it is misleading.** Keeping the cache
 > entry is not the same as keeping the cache *benefit*. Listings cost is paid on the cache-miss
-> fraction; banner cost is paid on **every** home page view, because a cache hit still has to
-> resolve three fragments and each one blocks on Topsort for up to the 500 ms service timeout.
-> Worst case is now 1.5s when every call reaches its timeout. The rate limiter sheds excess
-> demand before it can consume another storefront thread.
+> fraction; banner cost is paid on **every** PLP and home page view, because a cache hit still
+> runs the banner auctions. On a PLP each fragment blocks rendering on Topsort for up to the
+> 500 ms service timeout. On the home page the auctions do not block rendering, but they still
+> hold one storefront thread each for the same time. The rate limiter sheds excess demand
+> before it can consume another storefront thread.
 
 Because auctions now sit on the critical path of every uncached render, the service profile is
 configured with a 500 ms timeout, rate limiting, and an enabled circuit breaker. See
@@ -1093,7 +1191,7 @@ Merchant Tools → Site Preferences → Custom Preferences → **Topsort**:
 | `topsortTrackingEnabled` | `true` |
 | `topsortAuctionTrafficPercent` | `1` to start. Raise it while watching storefront response times |
 | `topsortEnabled` | `true` — set this **last**, after the rest is verified |
-| `topsortBannersEnabled` | leave `false` until the seven slots exist in Topsort and the home page components are placed — see [step 6](#6-banners) below |
+| `topsortBannersEnabled` | leave `false` until the seven slots exist in Topsort and the home page placeholders are pasted — see [step 6](#6-banners) below |
 
 The project metadata and the cartridge reference metadata define the same Topsort preferences.
 
@@ -1127,9 +1225,8 @@ until all three are done:
 1. **Create the seven slots in Topsort** with a TSC management key — see
    [Creating the slots in Topsort](#creating-the-slots-in-topsort). The `slotId` values must
    match `cartridge/scripts/config/topsort_banners.json` exactly.
-2. **Place the home page components.** Three instances of **Topsort - Sponsored Banner** in
-   Page Designer — see
-   [Placing the home page banners](#placing-the-home-page-banners). The search and category
+2. **Have HITES paste the home placeholders** into the home content slots — see
+   [Home page banners (banners.js)](#home-page-banners-bannersjs). The search and category
    placements are in the template overrides and need no merchandising.
 3. **Have at least one campaign bidding**, otherwise every slot correctly renders nothing and
    there is nothing to verify.
@@ -1242,6 +1339,14 @@ Placement and layout:
 - [ ] Home page: slides 5 and 6 of the hero carousel are banners, full bleed, and the carousel
       still reports the same number of slides as before when both win.
 - [ ] Home page: the "banner full" row renders a full width banner.
+- [ ] Home page: one `Topsort-BannersApi?path=/v2/auctions` request per slot in the network
+      panel, **none** to `api.topsort.com`, and no real API key anywhere in the page.
+- [ ] Home page: no `<topsort-banner>` left in the DOM once the banners settle, and the
+      cloned slides slick shows on wrap-around carry the same banner as slides 5 and 6.
+- [ ] Home page: the auction log shows the shopper's `tsuid` (or the session fallback) as
+      `opaqueUserId`, and a purchase after a banner click is attributed to that click.
+- [ ] Home page: a bid without its `~` proof, a cross-origin `Origin` or a non-JSON body
+      posted to `Topsort-BannersApi?path=/v2/events` is dropped.
 - [ ] Search and category: the side banner sits under the filters and **sticks** while the
       results scroll, rather than scrolling away with the filter box.
 - [ ] Search and category: the footer banner is below everything and spans the **full
