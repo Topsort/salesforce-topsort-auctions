@@ -9,6 +9,11 @@
 </iscomment>
 <isset name="tsSearchQuery" value="${''}" scope="page" />
 <isset name="tsCategoryId" value="${(pdict.productSearch && pdict.productSearch.category) ? pdict.productSearch.category.id : ''}" scope="page" />
+<isif condition="${pdict.isBrandCategoryPage && !empty(pdict.brandsCategoryMetaTitle)}">
+    <title>${pdict.brandsCategoryMetaTitle}</title>
+<iselse/>
+    <title><isprint value="${require('*/cartridge/scripts/helpers/pageMetaHelper').getCurrentPageMeta(pdict, 'title')}" encoding="htmlcontent" /></title>
+</isif>
 <section id="main" class="catalog__body">
     <div class="plp-hero-banner-slot">
         <isslot id="plp-hero-banner" description="Content slot for full-width banner" context="global" />

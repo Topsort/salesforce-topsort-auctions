@@ -39,7 +39,7 @@
 
     <isinclude template="topsort/trackingInit" />
 
-    <div class="ts-banner ts-banner--${pdict.banner.slotId}"
+    <div class="ts-banner ts-banner--${pdict.banner.slotId} ts-banner--${pdict.banner.device}"
          data-ts-slot="${pdict.banner.slotId}"
          data-ts-bid-id="${pdict.banner.resolvedBidId}">
         <isif condition="${pdict.banner.destination}">

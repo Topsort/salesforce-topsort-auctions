@@ -85,34 +85,29 @@
     width: 100%;
 }
 
-// Home page slots, filled client side by topsort-home-banners.js.
+// The home full width row, in its own homepage-topsort-banner-full slot between HITES's rows.
 //
-// While the auction runs the placeholder holds the height of the creative it is waiting for,
-// at the sizes agreed with HITES for the slot, so a carousel slide does not change height
-// under the shopper and the full width row does not push the page down when it fills. Once
-// a banner is in, the creative sets the height itself. The mobile ratio follows the same
-// breakpoint the HITES hero <picture> elements switch at.
-.ts-home-slot {
-    overflow: hidden;
-
-    &--slide {
-        aspect-ratio: 2680 / 821;
-
-        @media (max-width: 767.98px) {
-            aspect-ratio: 720 / 857;
-        }
+// The margin matches the my-4 those rows use. It is on the banner itself, not on the slot
+// wrapper or the template's container, so it exists only when a banner rendered: a slot with
+// no winner, or whose include failed and left the wrapper behind, takes no space.
+//
+// The frame is the shape agreed with HITES for this placement, per device: 2620 x 323 on
+// desktop, 706 x 365 on mobile. A creative of any other shape is cropped to it rather than
+// allowed to change the height of the row. The frame keys on the device the auction ran for,
+// because that is the device the returned creative was uploaded against.
+.ts-banner-slot--home-banner-full {
+    .ts-banner {
+        margin-top: 1.5rem;
+        margin-bottom: 1.5rem;
     }
 
-    &--full {
+    .ts-banner__image {
         aspect-ratio: 2620 / 323;
-
-        @media (max-width: 767.98px) {
-            aspect-ratio: 706 / 365;
-        }
+        object-fit: cover;
     }
 
-    &--filled {
-        aspect-ratio: auto;
+    .ts-banner--mobile .ts-banner__image {
+        aspect-ratio: 706 / 365;
     }
 }
 
