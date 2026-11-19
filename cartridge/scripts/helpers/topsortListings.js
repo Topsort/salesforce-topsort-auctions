@@ -2,6 +2,7 @@
 
 var Logger = require("dw/system/Logger").getLogger("SponsoredSearch");
 var ProductMgr = require("dw/catalog/ProductMgr");
+var topsortCatalogIds = require("*/cartridge/scripts/helpers/topsortCatalogIds");
 var topsortEventAuth = require("*/cartridge/scripts/helpers/topsortEventAuth");
 var topsortHelpers = require("*/cartridge/scripts/helpers/topsortHelpers");
 var topsortSession = require("*/cartridge/scripts/helpers/topsortSession");
@@ -127,38 +128,101 @@ function isInjectable(product) {
 }
 
 /**
+ * Reports whether a winning variant of a tile already on the page can be sold.
+ *
+ * The search engine vetted the tile, but not each size it represents: the index can still
+ * list a size that is out of stock. Showing the tile for such a winner would bill the bid on
+ * that size for a tile the shopper cannot buy it from. searchable is left out on purpose,
+ * because the search engine already returned this family and the variant's own flag is not
+ * documented to inherit from its master.
+ *
+ * @param {dw.catalog.Product} product - Variant resolved from the winning bid
+ * @returns {boolean} True when the variant may be shown as the sponsored tile
+ */
+function isSellableVariant(product) {
+    return Boolean(product)
+        && product.online
+        && Boolean(product.availabilityModel)
+        && product.availabilityModel.orderable;
+}
+
+/**
  * Builds the sponsored entries for the auction winners.
  *
- * Winners already present in this page of organic results reuse that entry, so the tile
- * keeps its productSearchHit and the search engine's own visibility rules stand. Winners
- * from keyword or category bids are vetted by isInjectable before being added.
+ * Winners are catalog variant IDs, while an organic master tile is keyed by its master ID, so
+ * each winner is matched back to its tile through entryByCatalogId. That entry is reused, so
+ * the tile keeps its productSearchHit and the search engine's own visibility rules stand, but
+ * it renders the winning variant: the tile, its tile-<pid> id and the auction then all carry
+ * the ID the campaign bid on. A winning variant that cannot be sold is skipped, never shown
+ * on the tile it came from. Winners from keyword or category bids are vetted by isInjectable
+ * before being added.
+ *
+ * A vetted winner the search did not represent - typically another colour of a master tile
+ * on a page refined by colour - takes over its master's organic tile instead of being
+ * injected next to it, so the model is still shown once.
  *
  * @param {Array} winners - Listings winners from the auction response
+ * @param {Object} entryByCatalogId - Organic entry for each catalog ID sent in the auction
  * @param {Array} originalEntries - The organic productIds entries
  * @param {string} opaqueUserId - Shopper identity used for the auction
  * @returns {Array} Sponsored entries, in auction order
  */
-function buildSponsoredEntries(winners, originalEntries, opaqueUserId) {
+function buildSponsoredEntries(winners, entryByCatalogId, originalEntries, opaqueUserId) {
     var skippedProductIds = [];
-    // Two bids on the same product can both win a single auction. Placing it twice renders
-    // two tiles carrying the same tile-<pid> id, so the shopper sees one tile while Topsort
-    // is sent two impressions, and one click on it is reported - and charged - twice.
-    var seenProductIds = {};
+    // Two bids on the same product - or on two sizes of the same organic tile - can both win
+    // a single auction. Placing it twice renders two tiles for one product, so the shopper
+    // sees one model twice while Topsort is sent two impressions for it. A tile only counts
+    // as taken once a winner is actually placed on it, so a skipped size leaves the tile to
+    // the next winning size.
+    var seenTileIds = {};
+    var entryByProductId = {};
+    originalEntries.forEach(function (entry) {
+        if (entry && entry.productID && !Object.prototype.hasOwnProperty.call(entryByProductId, entry.productID)) {
+            entryByProductId[entry.productID] = entry;
+        }
+    });
 
     var sponsored = winners.reduce(function (acc, w) {
-        if (!w || !w.id || seenProductIds[w.id]) {
+        if (!w || !w.id) {
             return acc;
         }
-        seenProductIds[w.id] = true;
 
-        var orig = originalEntries.filter(function (e) {
-            return e.productID === w.id;
-        })[0];
+        var orig = Object.prototype.hasOwnProperty.call(entryByCatalogId, w.id)
+            ? entryByCatalogId[w.id]
+            : null;
+        if (orig && seenTileIds[orig.productID]) {
+            return acc;
+        }
+        if (orig && w.id !== orig.productID && !isSellableVariant(ProductMgr.getProduct(w.id))) {
+            skippedProductIds.push(w.id);
+            return acc;
+        }
+
+        if (!orig) {
+            if (seenTileIds[w.id]) {
+                return acc;
+            }
+            var product = ProductMgr.getProduct(w.id);
+            if (!isInjectable(product)) {
+                skippedProductIds.push(w.id);
+                return acc;
+            }
+            var masterId = product.variant && product.masterProduct ? String(product.masterProduct.ID) : null;
+            orig = masterId && Object.prototype.hasOwnProperty.call(entryByProductId, masterId)
+                ? entryByProductId[masterId]
+                : null;
+            if (orig && seenTileIds[orig.productID]) {
+                return acc;
+            }
+        }
 
         // Already on the page organically: reuse the entry and just flag it as sponsored.
         if (orig) {
+            seenTileIds[orig.productID] = true;
             var sponsoredProduct = {};
             topsortHelpers.assignObject(sponsoredProduct, orig);
+            sponsoredProduct.organicProductID = orig.productID;
+            sponsoredProduct.productID = w.id;
             sponsoredProduct.isSponsored = true;
             sponsoredProduct.isInjected = false;
             sponsoredProduct.resolvedBidId = w.resolvedBidId;
@@ -167,10 +231,7 @@ function buildSponsoredEntries(winners, originalEntries, opaqueUserId) {
             return acc;
         }
 
-        if (!isInjectable(ProductMgr.getProduct(w.id))) {
-            skippedProductIds.push(w.id);
-            return acc;
-        }
+        seenTileIds[w.id] = true;
 
         acc.push({
             productID:     w.id,
@@ -214,7 +275,8 @@ function hasSponsoredProducts(productSearch) {
  * productSearch.productIds in place.
  *
  * Fail-open: when Topsort is disabled, the request falls outside the configured share of
- * traffic, a brand filter is selected, or the API call fails, the organic grid is left
+ * traffic, a brand filter is selected, no tile resolves to a Topsort catalog ID, or the API
+ * call fails, the organic grid is left
  * exactly as it was and the response stays cacheable.
  *
  * @param {Object} productSearch - SFRA productSearch model whose productIds are merged
@@ -249,15 +311,16 @@ function applyListingsAuction(productSearch, options) {
         return result;
     }
 
+    var originalEntries = productSearch.productIds;
+    var auctionProducts = topsortCatalogIds.buildAuctionProductIds(originalEntries);
+    if (!auctionProducts.ids.length) {
+        return result;
+    }
+
     // A freshly minted tsuid cookie cannot survive the page cache, so the response that
     // sets it has to be served dynamically.
     var opaqueUser = topsortSession.resolveOpaqueUser();
     result.cacheable = !opaqueUser.isNew;
-
-    var originalEntries = productSearch.productIds;
-    var productIDs = originalEntries.map(function (e) {
-        return e.productID;
-    });
 
     // searchQuery and category are separate auction triggers, and a search refined by a
     // category arrives with both q and cgid set. The shopper's own query is the stronger
@@ -272,7 +335,7 @@ function applyListingsAuction(productSearch, options) {
     var listingsAuction = topsortHelpers.createListingsAuction({
         type: "listings",
         slots: SLOTS,
-        products: { ids: productIDs },
+        products: { ids: auctionProducts.ids },
         opaqueUserId: opaqueUser.id
     }, {
         searchQuery: searchQuery,
@@ -288,6 +351,7 @@ function applyListingsAuction(productSearch, options) {
 
     var sponsoredTop = buildSponsoredEntries(
         extractListingsWinners(auctionResponse.data),
+        auctionProducts.entryByCatalogId,
         originalEntries,
         opaqueUser.id
     );

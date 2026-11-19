@@ -78,11 +78,15 @@ function placeTheSponsoredProducts(sponsoredTop, originalEntries) {
 
     // A winning product cloned into sponsoredTop may also still be present in the
     // organic results. Drop the organic occurrence so each sponsored product is shown
-    // once (in its sponsored slot) instead of being duplicated in the grid.
+    // once (in its sponsored slot) instead of being duplicated in the grid. A sponsored
+    // variant of an organic master tile names that tile in organicProductID.
     var sponsoredIds = {};
     for (var s = 0; s < sponsoredTop.length; s++) {
         if (sponsoredTop[s] && sponsoredTop[s].productID) {
             sponsoredIds[sponsoredTop[s].productID] = true;
+        }
+        if (sponsoredTop[s] && sponsoredTop[s].organicProductID) {
+            sponsoredIds[sponsoredTop[s].organicProductID] = true;
         }
     }
     var organicEntries = [];
