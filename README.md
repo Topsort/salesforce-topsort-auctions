@@ -495,8 +495,9 @@ instead:
 | Hit | IDs sent |
 | --- | --- |
 | Master or variation group | `hit.representedProductIDs` without the master/group ID: the variants that matched the query and the selected refinements, `firstRepresentedProductID` first |
-| Slicing group (one tile per colour) | Its represented sizes, with the hit's own variant ID first, so these tiles behave as before |
+| Slicing group (one tile per colour) | Its represented sizes, with the hit's own variant ID first. If another size of that colour wins, the tile renders that size |
 | Variant, simple product, set, bundle | The hit's own ID |
+| Slicing group with no represented IDs | The hit's own variant ID, never the master's variants, which span every colour |
 | Master with no represented IDs, or an entry with no hit | The default variant, then the other online variants |
 
 Every size is offered, not one per tile, because campaigns target individual sizes
@@ -510,9 +511,20 @@ Winners come back as variant IDs and are matched to their tile through the same 
 including IDs the cap left out. The tile is then rendered for the **winning variant**
 (`Tile-Show?pid=963517002`, `id="tile-963517002"`), so the tile, its link, the auction and the
 purchase line all carry the ID the campaign bid on, and the organic master tile is removed so
-the model is not shown twice. If the winning variant fails the [winner vetting](#winner-vetting)
-checks, the organic tile is kept and flagged sponsored instead. Two sizes of one tile winning
-the same auction produce one sponsored tile.
+the model is not shown twice. When the page also carries that variant as its own entry (a
+variant assigned directly to the category), that entry is the one sponsored and the master tile
+stays organic.
+
+The index can represent a size that is out of stock, so a winning variant of an organic tile
+must be online and orderable. One that is not is **skipped and logged** under
+`SponsoredSearch`, exactly like an unsellable keyword winner: showing the tile anyway would bill
+the bid on that size for a tile it cannot be bought from. Its `searchable` flag is not checked,
+because the search engine already returned the family and a variant's own flag is not
+documented to inherit from its master.
+
+Two sizes of one tile winning the same auction produce one sponsored tile; a skipped size
+leaves the tile to the next winning size. Topsort does not know the sizes share a tile, so
+sibling wins can leave fewer than six sponsored tiles on a page.
 
 > Ignore the `SponsoredListingsAuction` schema description in the public API reference, which
 > claims "Exactly **one** of the following fields must be set: `products`, `category`". It is

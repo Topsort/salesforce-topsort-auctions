@@ -128,15 +128,34 @@ function isInjectable(product) {
 }
 
 /**
+ * Reports whether a winning variant of a tile already on the page can be sold.
+ *
+ * The search engine vetted the tile, but not each size it represents: the index can still
+ * list a size that is out of stock. Showing the tile for such a winner would bill the bid on
+ * that size for a tile the shopper cannot buy it from. searchable is left out on purpose,
+ * because the search engine already returned this family and the variant's own flag is not
+ * documented to inherit from its master.
+ *
+ * @param {dw.catalog.Product} product - Variant resolved from the winning bid
+ * @returns {boolean} True when the variant may be shown as the sponsored tile
+ */
+function isSellableVariant(product) {
+    return Boolean(product)
+        && product.online
+        && Boolean(product.availabilityModel)
+        && product.availabilityModel.orderable;
+}
+
+/**
  * Builds the sponsored entries for the auction winners.
  *
  * Winners are catalog variant IDs, while an organic master tile is keyed by its master ID, so
  * each winner is matched back to its tile through entryByCatalogId. That entry is reused, so
  * the tile keeps its productSearchHit and the search engine's own visibility rules stand, but
  * it renders the winning variant: the tile, its tile-<pid> id and the auction then all carry
- * the ID the campaign bid on, as the colour split tiles already do. A winning variant that
- * cannot be sold here falls back to the organic tile it came from. Winners from keyword or
- * category bids are vetted by isInjectable before being added.
+ * the ID the campaign bid on. A winning variant that cannot be sold is skipped, never shown
+ * on the tile it came from. Winners from keyword or category bids are vetted by isInjectable
+ * before being added.
  *
  * @param {Array} winners - Listings winners from the auction response
  * @param {Object} entryByCatalogId - Organic entry for each catalog ID sent in the auction
@@ -147,7 +166,9 @@ function buildSponsoredEntries(winners, entryByCatalogId, opaqueUserId) {
     var skippedProductIds = [];
     // Two bids on the same product - or on two sizes of the same organic tile - can both win
     // a single auction. Placing it twice renders two tiles for one product, so the shopper
-    // sees one model twice while Topsort is sent two impressions for it.
+    // sees one model twice while Topsort is sent two impressions for it. A tile only counts
+    // as taken once a winner is actually placed on it, so a skipped size leaves the tile to
+    // the next winning size.
     var seenTileIds = {};
 
     var sponsored = winners.reduce(function (acc, w) {
@@ -162,16 +183,18 @@ function buildSponsoredEntries(winners, entryByCatalogId, opaqueUserId) {
         if (seenTileIds[tileId]) {
             return acc;
         }
-        seenTileIds[tileId] = true;
 
         // Already on the page organically: reuse the entry and just flag it as sponsored.
         if (orig) {
+            if (w.id !== orig.productID && !isSellableVariant(ProductMgr.getProduct(w.id))) {
+                skippedProductIds.push(w.id);
+                return acc;
+            }
+            seenTileIds[tileId] = true;
             var sponsoredProduct = {};
             topsortHelpers.assignObject(sponsoredProduct, orig);
             sponsoredProduct.organicProductID = orig.productID;
-            if (w.id !== orig.productID && isInjectable(ProductMgr.getProduct(w.id))) {
-                sponsoredProduct.productID = w.id;
-            }
+            sponsoredProduct.productID = w.id;
             sponsoredProduct.isSponsored = true;
             sponsoredProduct.isInjected = false;
             sponsoredProduct.resolvedBidId = w.resolvedBidId;
@@ -184,6 +207,7 @@ function buildSponsoredEntries(winners, entryByCatalogId, opaqueUserId) {
             skippedProductIds.push(w.id);
             return acc;
         }
+        seenTileIds[tileId] = true;
 
         acc.push({
             productID:     w.id,

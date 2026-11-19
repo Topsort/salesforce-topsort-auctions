@@ -100,19 +100,24 @@ function getSellableIds(product) {
  * A master or variation group hit carries the master or group ID, which is the one place SFRA
  * puts in productSearch.productIds. Its represented products are the variants that matched
  * the query and the selected refinements, so a search filtered to black sends only the black
- * sizes. A slicing group hit (one tile per colour) and a hit on a variant assigned directly to
- * the category already carry a variant ID, which stays first so those tiles behave as before.
+ * sizes. A hit on a variant assigned directly to the category carries a variant ID and sends
+ * only that. A slicing group hit (one tile per colour) carries a variant ID on HITES too
+ * (tile-973764001 on a slicing_group tile), which stays first ahead of the other sizes of
+ * that colour.
  *
  * @param {dw.catalog.ProductSearchHit} hit - Organic search hit
  * @returns {Array<string>} Catalog IDs for the hit, best candidate first
  */
 function getHitCatalogIds(hit) {
     var ownId = String(hit.productID);
-    var hitType = hit.hitType;
-    var isGroupedHit = hitType === ProductSearchHit.HIT_TYPE_PRODUCT_MASTER
-        || hitType === ProductSearchHit.HIT_TYPE_VARIATION_GROUP;
+    // Compared as script strings: HITES's own code compares hitType loosely, and a strict
+    // comparison against a host string would silently send the master ID again.
+    var hitType = String(hit.hitType);
+    var isGroupedHit = hitType === String(ProductSearchHit.HIT_TYPE_PRODUCT_MASTER)
+        || hitType === String(ProductSearchHit.HIT_TYPE_VARIATION_GROUP);
+    var isSlicingHit = hitType === String(ProductSearchHit.HIT_TYPE_SLICING_GROUP);
 
-    if (!isGroupedHit && hitType !== ProductSearchHit.HIT_TYPE_SLICING_GROUP) {
+    if (!isGroupedHit && !isSlicingHit) {
         return [ownId];
     }
 
@@ -121,6 +126,11 @@ function getHitCatalogIds(hit) {
     });
 
     if (!represented.length) {
+        // The product of a slicing hit is the master, whose variants span every colour, so
+        // falling back to them would let another colour's winner take this colour's tile.
+        if (isSlicingHit && !(hit.product && String(hit.product.ID) === ownId)) {
+            return [ownId];
+        }
         return getSellableIds(hit.product);
     }
 
@@ -159,7 +169,9 @@ function getEntryCatalogIds(entry) {
  *
  * entryByCatalogId covers every resolved ID, including the ones the cap left out of the
  * request, so a winner that reaches the auction through a keyword or category bid is still
- * matched back to the tile already showing its product instead of being injected twice.
+ * matched back to the tile already showing its product instead of being injected twice. An
+ * entry keyed by the winning ID itself (a variant assigned directly to the category) takes
+ * precedence over a master tile that also represents it, so the master tile stays organic.
  *
  * @param {Array<Object>} entries - SFRA productSearch.productIds entries
  * @param {number} [maxIds] - Most IDs to send, MAX_AUCTION_PRODUCT_IDS by default
@@ -171,6 +183,13 @@ function buildAuctionProductIds(entries, maxIds) {
     var catalogIdsPerEntry = (entries || []).map(getEntryCatalogIds);
     var entryByCatalogId = {};
     var ids = [];
+
+    catalogIdsPerEntry.forEach(function (catalogIds, index) {
+        var ownId = catalogIds.length ? String(entries[index].productID) : null;
+        if (ownId && catalogIds.indexOf(ownId) !== -1 && !Object.prototype.hasOwnProperty.call(entryByCatalogId, ownId)) {
+            entryByCatalogId[ownId] = entries[index];
+        }
+    });
 
     catalogIdsPerEntry.forEach(function (catalogIds, index) {
         catalogIds.forEach(function (id) {
