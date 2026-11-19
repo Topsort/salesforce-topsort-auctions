@@ -78,13 +78,6 @@
     }
 }
 
-// The footer banner is rendered outside .container and outside the results column so it can
-// run the full width of the viewport, which is what this placement was specified as.
-.ts-banner-slot--category-bottom,
-.ts-banner-slot--search-bottom {
-    width: 100%;
-}
-
 // The in-grid banner: a full width row inside the product grid of search and category pages.
 //
 // It is the last element of the grid in the markup and is moved into place with flex order,
@@ -149,6 +142,13 @@
 
 .list-view > .ts-grid-below-banner--list {
     order: 2;
+}
+
+// The footer banner is rendered outside .container and outside the results column so it can
+// run the full width of the viewport, which is what this placement was specified as.
+.ts-banner-slot--category-bottom,
+.ts-banner-slot--search-bottom {
+    width: 100%;
 }
 
 // The home full width row, in its own homepage-topsort-banner-full slot between HITES's rows.
