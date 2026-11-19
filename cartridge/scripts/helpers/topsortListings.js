@@ -157,12 +157,17 @@ function isSellableVariant(product) {
  * on the tile it came from. Winners from keyword or category bids are vetted by isInjectable
  * before being added.
  *
+ * A vetted winner the search did not represent - typically another colour of a master tile
+ * on a page refined by colour - takes over its master's organic tile instead of being
+ * injected next to it, so the model is still shown once.
+ *
  * @param {Array} winners - Listings winners from the auction response
  * @param {Object} entryByCatalogId - Organic entry for each catalog ID sent in the auction
+ * @param {Array} originalEntries - The organic productIds entries
  * @param {string} opaqueUserId - Shopper identity used for the auction
  * @returns {Array} Sponsored entries, in auction order
  */
-function buildSponsoredEntries(winners, entryByCatalogId, opaqueUserId) {
+function buildSponsoredEntries(winners, entryByCatalogId, originalEntries, opaqueUserId) {
     var skippedProductIds = [];
     // Two bids on the same product - or on two sizes of the same organic tile - can both win
     // a single auction. Placing it twice renders two tiles for one product, so the shopper
@@ -170,6 +175,12 @@ function buildSponsoredEntries(winners, entryByCatalogId, opaqueUserId) {
     // as taken once a winner is actually placed on it, so a skipped size leaves the tile to
     // the next winning size.
     var seenTileIds = {};
+    var entryByProductId = {};
+    originalEntries.forEach(function (entry) {
+        if (entry && entry.productID && !Object.prototype.hasOwnProperty.call(entryByProductId, entry.productID)) {
+            entryByProductId[entry.productID] = entry;
+        }
+    });
 
     var sponsored = winners.reduce(function (acc, w) {
         if (!w || !w.id) {
@@ -179,18 +190,35 @@ function buildSponsoredEntries(winners, entryByCatalogId, opaqueUserId) {
         var orig = Object.prototype.hasOwnProperty.call(entryByCatalogId, w.id)
             ? entryByCatalogId[w.id]
             : null;
-        var tileId = orig ? orig.productID : w.id;
-        if (seenTileIds[tileId]) {
+        if (orig && seenTileIds[orig.productID]) {
             return acc;
+        }
+        if (orig && w.id !== orig.productID && !isSellableVariant(ProductMgr.getProduct(w.id))) {
+            skippedProductIds.push(w.id);
+            return acc;
+        }
+
+        if (!orig) {
+            if (seenTileIds[w.id]) {
+                return acc;
+            }
+            var product = ProductMgr.getProduct(w.id);
+            if (!isInjectable(product)) {
+                skippedProductIds.push(w.id);
+                return acc;
+            }
+            var masterId = product.variant && product.masterProduct ? String(product.masterProduct.ID) : null;
+            orig = masterId && Object.prototype.hasOwnProperty.call(entryByProductId, masterId)
+                ? entryByProductId[masterId]
+                : null;
+            if (orig && seenTileIds[orig.productID]) {
+                return acc;
+            }
         }
 
         // Already on the page organically: reuse the entry and just flag it as sponsored.
         if (orig) {
-            if (w.id !== orig.productID && !isSellableVariant(ProductMgr.getProduct(w.id))) {
-                skippedProductIds.push(w.id);
-                return acc;
-            }
-            seenTileIds[tileId] = true;
+            seenTileIds[orig.productID] = true;
             var sponsoredProduct = {};
             topsortHelpers.assignObject(sponsoredProduct, orig);
             sponsoredProduct.organicProductID = orig.productID;
@@ -203,11 +231,7 @@ function buildSponsoredEntries(winners, entryByCatalogId, opaqueUserId) {
             return acc;
         }
 
-        if (!isInjectable(ProductMgr.getProduct(w.id))) {
-            skippedProductIds.push(w.id);
-            return acc;
-        }
-        seenTileIds[tileId] = true;
+        seenTileIds[w.id] = true;
 
         acc.push({
             productID:     w.id,
@@ -328,6 +352,7 @@ function applyListingsAuction(productSearch, options) {
     var sponsoredTop = buildSponsoredEntries(
         extractListingsWinners(auctionResponse.data),
         auctionProducts.entryByCatalogId,
+        originalEntries,
         opaqueUser.id
     );
 

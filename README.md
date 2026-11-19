@@ -513,7 +513,11 @@ including IDs the cap left out. The tile is then rendered for the **winning vari
 purchase line all carry the ID the campaign bid on, and the organic master tile is removed so
 the model is not shown twice. When the page also carries that variant as its own entry (a
 variant assigned directly to the category), that entry is the one sponsored and the master tile
-stays organic.
+stays organic. A winner the search did not represent at all — typically another colour of a
+master tile on a page refined by colour, won through a keyword or category bid — is vetted like
+any out-of-page winner and then takes over its master's organic tile instead of being injected
+next to it. Colour split tiles are each their own tile, so a winner of another colour is
+injected as usual.
 
 The index can represent a size that is out of stock, so a winning variant of an organic tile
 must be online and orderable. One that is not is **skipped and logged** under
