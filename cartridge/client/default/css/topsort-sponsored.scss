@@ -85,6 +85,72 @@
     width: 100%;
 }
 
+// The in-grid banner: a full width row inside the product grid of search and category pages.
+//
+// It is the last element of the grid in the markup and is moved into place with flex order,
+// never by where it sits among the tiles. The HITES stylesheet spaces the tiles with
+// nth-child rules, which count every sibling, so an element placed between two tiles would
+// shift the margins of every tile after it. Appended last, it changes no tile's index.
+//
+// The row it sits in comes from the topsortGridBannerRow site preference. The grid templates
+// mark every cell below that row with the ts-grid-below-banner--* classes, one per layout
+// because a row holds a different number of tiles on each: two below lg, three or four from
+// lg up, one in the list view. Unmarked cells keep the default order 0, the banner is 1 and
+// the marked cells are 2, so the banner is in the same row on every layout and the rows above
+// it are always complete. Cells that share an order keep their document order, so a grid
+// with no banner renders exactly as before.
+.ts-banner-slot--grid {
+    order: 1;
+    flex: 0 0 100%;
+    max-width: 100%;
+
+    // The tiles carry their own bottom spacing inside the tile; the banner needs the same
+    // gap below it to sit in the grid like a row of them.
+    .ts-banner {
+        margin-bottom: 10px;
+
+        @include media-breakpoint-down(md) {
+            margin-bottom: 4px;
+        }
+    }
+
+    // The frame is the shape of the creative for this placement, per device: 2000 x 300 on
+    // desktop, 1320 x 352 on mobile. The banners API returns no dimensions, so without it the
+    // row has no height until the image loads and every tile below it would jump. A creative
+    // of another shape is cropped to the frame. It keys on the device the auction ran for,
+    // because that is the device the returned creative was uploaded against.
+    .ts-banner__image {
+        aspect-ratio: 2000 / 300;
+        object-fit: cover;
+    }
+
+    .ts-banner--mobile .ts-banner__image {
+        aspect-ratio: 1320 / 352;
+    }
+}
+
+// HITES hides the tiles until the grid has finished loading. The banner follows them, so it
+// is not shown on its own above an empty grid.
+.product-view.loading .ts-banner-slot--grid {
+    display: none;
+}
+
+.grid-view > .ts-grid-below-banner--narrow {
+    @include media-breakpoint-down(md) {
+        order: 2;
+    }
+}
+
+.grid-view > .ts-grid-below-banner--wide {
+    @include media-breakpoint-up(lg) {
+        order: 2;
+    }
+}
+
+.list-view > .ts-grid-below-banner--list {
+    order: 2;
+}
+
 // The home full width row, in its own homepage-topsort-banner-full slot between HITES's rows.
 //
 // The margin matches the my-4 those rows use. It is on the banner itself, not on the slot

@@ -1,6 +1,16 @@
 <isinclude template="topsort/trackingInit" />
+<iscomment>
+    TOPSORT in-grid banner. The Search controller decides whether this grid carries one and
+    leaves the answer in pdict.topsortGridBanner. The banner itself is the last element of the
+    grid (topsort/gridBannerSlot, below the loop) and each tile only receives the classes that
+    order it above or below the banner - see getGridCellClass in topsortBanners.js.
+</iscomment>
+<isset name="tsGridBanner" value="${pdict.topsortGridBanner || null}" scope="page" />
+<isscript>
+    var tsGridBannerHelper = require('*/cartridge/scripts/helpers/topsortBanners');
+</isscript>
 <isloop items="${pdict.productSearch.productIds}" status="tilesLoop" var="product">
-    <div id="tile-${product.productID}" class="col-6 ${(typeof grid4 != 'undefined' && grid4) ? "col-lg-3" : "col-lg-4"} px-0" data-product-position="${tilesLoop.index}" data-product-type="${!product.isSponsored ? product.productSearchHit.hitType : ""}">
+    <div id="tile-${product.productID}" class="col-6 ${(typeof grid4 != 'undefined' && grid4) ? "col-lg-3" : "col-lg-4"} px-0 ${tsGridBannerHelper.getGridCellClass(tsGridBanner, tilesLoop.index, (typeof grid4 != 'undefined' && grid4) ? 4 : 3)}" data-product-position="${tilesLoop.index}" data-product-type="${!product.isSponsored ? product.productSearchHit.hitType : ""}">
         <isif condition="${product.isSponsored === true}">
             <iscomment>
                 categoryId and searchQuery come straight from the shopper's query string, so
@@ -46,3 +56,6 @@
         </isif>
     </div>
 </isloop>
+<isif condition="${tsGridBannerHelper.hasGridBannerRow(tsGridBanner, pdict.productSearch.productIds.length, (typeof grid4 != 'undefined' && grid4) ? 4 : 3)}">
+    <isinclude template="topsort/gridBannerSlot" />
+</isif>

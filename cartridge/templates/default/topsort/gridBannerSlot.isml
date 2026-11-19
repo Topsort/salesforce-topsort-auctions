@@ -1,0 +1,23 @@
+<iscomment>
+    Places the in-grid banner in a product grid.
+
+    Included by both grid templates right after their tile loop, with one page scoped
+    variable set above it:
+
+      tsGridBanner   result of topsortBanners.getGridBannerPlacement:
+                     { slotId, row, categoryId, searchQuery }
+
+    The banner is the last element of the grid in the markup, not an element between the
+    tiles of two rows. The HITES stylesheet spaces the tiles with nth-child rules, which count
+    every sibling, so an element inserted between two tiles would shift the margins of every
+    tile after it. Here the tiles keep their place and the stylesheet moves the banner up
+    with flex order: the banner is order 1 and every cell below its row is order 2, through
+    the ts-grid-below-banner--* classes the loop gives them.
+
+    The same remote include as every other banner slot, so the grid keeps whatever page
+    caching it has. preserveWrapper keeps the wrapper in the document when no bid wins: it is
+    hidden, and a hidden last element changes nothing in the grid.
+</iscomment>
+<div class="ts-banner-slot ts-banner-slot--grid ts-banner-slot--${tsGridBanner.slotId}">
+    <isinclude url="${URLUtils.url('Topsort-Banner', 'slotId', tsGridBanner.slotId, 'cgid', tsGridBanner.categoryId || '', 'q', tsGridBanner.searchQuery || '', 'preserveWrapper', 'true')}" />
+</div>

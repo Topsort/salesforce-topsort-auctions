@@ -305,11 +305,169 @@ function resolveBanner(slotId, ctx) {
     return winner;
 }
 
+// Tiles per row in the HITES product grid: two below the lg breakpoint on every listing, and
+// three from lg up unless the category uses the four column layout.
+var NARROW_GRID_COLUMNS = 2;
+var DEFAULT_WIDE_GRID_COLUMNS = 3;
+
+/**
+ * Returns the value when it is a whole number of at least 1.
+ *
+ * @param {*} value - Site preference value or template argument
+ * @returns {number|null} The number, or null when it cannot be a row or a column count
+ */
+function toPositiveInteger(value) {
+    if (value === null || value === undefined || value === "") {
+        return null;
+    }
+
+    var number = Number(value);
+    return isFinite(number) && number >= 1 && Math.floor(number) === number ? number : null;
+}
+
+/**
+ * Returns the slot that renders inside the product grid of a page type.
+ *
+ * @param {string} page - "search" or "category"
+ * @returns {Object|null} The slot configuration, or null when none is configured
+ */
+function getGridSlot(page) {
+    for (var i = 0; i < slotConfig.length; i += 1) {
+        if (slotConfig[i].placement === "grid" && slotConfig[i].page === page) {
+            return slotConfig[i];
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Decides whether a product grid carries the in-grid banner, in which row and for which slot.
+ *
+ * The answer is rendered into the listing page itself, which is page cached, so it may only
+ * depend on what every shopper served from that cache entry shares: the configured row and
+ * whether the page is a search or a category. The two enabling switches, the device and the
+ * traffic share are left to the Topsort-Banner fragment, which is resolved on every view.
+ *
+ * Never throws: it is called while the grid is rendered, where an exception would take the
+ * listing page down with it.
+ *
+ * @param {Object} productSearch - Product search model whose productIds are the grid entries
+ * @param {Object} [ctx] - Page context
+ * @param {string} [ctx.categoryId] - Raw SFCC category id being browsed
+ * @param {string} [ctx.searchQuery] - Shopper search term
+ * @returns {Object|null} { slotId, row, categoryId, searchQuery }, or null when the grid
+ *     renders without a banner
+ */
+function getGridBannerPlacement(productSearch, ctx) {
+    try {
+        // An unset preference is the off position.
+        var row = toPositiveInteger(TopsortService.getConfig().gridBannerRow);
+        var entries = productSearch && productSearch.productIds;
+
+        if (!row || !entries || !entries.length) {
+            return null;
+        }
+
+        var context = ctx || {};
+        var searchQuery = context.searchQuery || productSearch.searchKeywords || "";
+        var categoryId = context.categoryId || (productSearch.category && productSearch.category.id) || "";
+
+        // The search term wins over the category, as it does for listings and for the side
+        // and footer banners. A grid with neither has no auction trigger to send.
+        var slot = getGridSlot(searchQuery ? "search" : "category");
+        if (!slot || (!searchQuery && !categoryId)) {
+            return null;
+        }
+
+        return {
+            slotId: slot.slotId,
+            row: row,
+            categoryId: searchQuery ? "" : String(categoryId),
+            searchQuery: searchQuery ? String(searchQuery) : ""
+        };
+    } catch (e) {
+        Logger.error("Topsort grid banner placement could not be resolved: {0}", e.message);
+        return null;
+    }
+}
+
+/**
+ * Returns the classes that move a grid cell below the in-grid banner.
+ *
+ * The banner is the last element of the grid in the markup and is placed by the flex order
+ * of the cells around it, so that it never changes which nth-child a tile is: the HITES
+ * stylesheet spaces the tiles with nth-child rules. Every cell after the rows above the
+ * banner is marked, once per layout, because a row holds a different number of tiles on each:
+ *
+ *   narrow  two tiles per row, below the lg breakpoint
+ *   wide    three or four tiles per row, from lg up
+ *   list    one tile per row, on categories set to the list view
+ *
+ * The stylesheet applies the class of the layout on screen, so the banner is in the same row
+ * on every layout while the page stays cacheable and needs no script to position it.
+ *
+ * @param {Object|null} placement - Result of getGridBannerPlacement
+ * @param {number} cellIndex - Zero based index of the cell among the grid cells
+ * @param {number} [wideColumns] - Tiles per row from the lg breakpoint up, 3 by default
+ * @returns {string} Space separated classes, or an empty string
+ */
+function getGridCellClass(placement, cellIndex, wideColumns) {
+    var row = placement ? toPositiveInteger(placement.row) : null;
+    var index = Number(cellIndex);
+
+    if (!row || !isFinite(index)) {
+        return "";
+    }
+
+    var rowsAbove = row - 1;
+    var columns = toPositiveInteger(wideColumns) || DEFAULT_WIDE_GRID_COLUMNS;
+    var classes = [];
+
+    if (index >= rowsAbove * NARROW_GRID_COLUMNS) {
+        classes.push("ts-grid-below-banner--narrow");
+    }
+    if (index >= rowsAbove * columns) {
+        classes.push("ts-grid-below-banner--wide");
+    }
+    if (index >= rowsAbove) {
+        classes.push("ts-grid-below-banner--list");
+    }
+
+    return classes.join(" ");
+}
+
+/**
+ * Reports whether the grid is long enough for the banner to sit in its configured row.
+ *
+ * The rows above the banner have to be full on the widest layout, which also fills them on
+ * the narrower ones. On a shorter page the banner would close the grid in an earlier row than
+ * the one configured, directly above the pagination and the footer banner, so it is left out.
+ *
+ * @param {Object|null} placement - Result of getGridBannerPlacement
+ * @param {number} cellCount - Number of cells the grid rendered
+ * @param {number} [wideColumns] - Tiles per row from the lg breakpoint up, 3 by default
+ * @returns {boolean} True when the banner slot should be rendered
+ */
+function hasGridBannerRow(placement, cellCount, wideColumns) {
+    var row = placement ? toPositiveInteger(placement.row) : null;
+    var count = Number(cellCount);
+
+    if (!row || !isFinite(count) || count < 1) {
+        return false;
+    }
+
+    return count >= (row - 1) * (toPositiveInteger(wideColumns) || DEFAULT_WIDE_GRID_COLUMNS);
+}
+
 module.exports = {
     getSlot: getSlot,
     isSlotOnDevice: isSlotOnDevice,
     isAllowedAssetUrl: isAllowedAssetUrl,
     buildAuction: buildAuction,
     extractWinner: extractWinner,
-    resolveBanner: resolveBanner
+    resolveBanner: resolveBanner,
+    getGridBannerPlacement: getGridBannerPlacement,
+    getGridCellClass: getGridCellClass,
+    hasGridBannerRow: hasGridBannerRow
 };

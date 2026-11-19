@@ -3,13 +3,15 @@
 var server = require("server");
 var Logger = require("dw/system/Logger").getLogger("SponsoredSearch");
 var superSearch = module.superModule;
+var topsortBanners = require("*/cartridge/scripts/helpers/topsortBanners");
 var topsortHelpers = require("*/cartridge/scripts/helpers/topsortHelpers");
 var topsortListings = require("*/cartridge/scripts/helpers/topsortListings");
 
 server.extend(superSearch);
 
 /**
- * Runs a listings auction and merges winners into search view data.
+ * Runs a listings auction and merges winners into search view data, then decides whether the
+ * grid carries the in-grid banner.
  * Fail-open: when Topsort is disabled or the API fails, the organic grid is left intact.
  *
  * @param {Object} req - The request object containing query parameters.
@@ -53,6 +55,13 @@ function applyListingsAuction(req, res) {
         // against these bids, under the first shopper's opaque user id.
         res.cachePeriod = 0; // eslint-disable-line no-param-reassign
     }
+
+    // Only says which slot the grid includes and in which row. It carries no bid, so it does
+    // not affect the cache decision above: the banner itself arrives through a remote include.
+    viewData.topsortGridBanner = topsortBanners.getGridBannerPlacement(viewData.productSearch, {
+        categoryId: req.querystring.cgid,
+        searchQuery: req.querystring.q
+    });
 
     res.setViewData(viewData);
 }

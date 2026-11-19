@@ -43,6 +43,14 @@
                 <externally-managed-flag>false</externally-managed-flag>
                 <min-length>0</min-length>
             </attribute-definition>
+            <attribute-definition attribute-id="topsortGridBannerRow">
+                <display-name xml:lang="x-default">Topsort Grid Banner Row</display-name>
+                <description xml:lang="x-default">Row of the product grid, on search and category pages, where the Topsort in-grid banner is shown. 1 puts it above the first row of products, 2 below the first row, and so on. The banner takes the whole row and the products below it move down one row. One value for search and category pages and for desktop and mobile. Leave it empty to turn the in-grid banner off. Requires topsortEnabled and topsortBannersEnabled. Listing pages are page cached, so a change shows up as their cache expires, or right away after invalidating the page cache.</description>
+                <type>int</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <min-value>1</min-value>
+            </attribute-definition>
             <attribute-definition attribute-id="topsortTrackingEnabled">
                 <display-name xml:lang="x-default">Enable Topsort Event Tracking</display-name>
                 <description xml:lang="x-default">Enable tracking of impressions, clicks, and purchases for Topsort sponsored products</description>
@@ -68,6 +76,7 @@
                 <attribute attribute-id="topsortEnabled"/>
                 <attribute attribute-id="topsortBannersEnabled"/>
                 <attribute attribute-id="topsortBannerAssetHosts"/>
+                <attribute attribute-id="topsortGridBannerRow"/>
                 <attribute attribute-id="topsortApiKey"/>
                 <attribute attribute-id="topsortApiURL"/>
                 <attribute attribute-id="topsortTrackingEnabled"/>

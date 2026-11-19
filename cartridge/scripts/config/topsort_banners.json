@@ -54,5 +54,23 @@
         "position": 2,
         "devices": ["desktop", "mobile"],
         "sizes": "100vw"
+    },
+    {
+        "slotId": "search-grid",
+        "page": "search",
+        "placement": "grid",
+        "slots": 1,
+        "position": 3,
+        "devices": ["desktop", "mobile"],
+        "sizes": "(min-width: 1340px) 1310px, (min-width: 1200px) calc(100vw - 30px), (min-width: 992px) 910px, calc(100vw - 30px)"
+    },
+    {
+        "slotId": "category-grid",
+        "page": "category",
+        "placement": "grid",
+        "slots": 1,
+        "position": 3,
+        "devices": ["desktop", "mobile"],
+        "sizes": "(min-width: 1340px) 1310px, (min-width: 1200px) calc(100vw - 30px), (min-width: 992px) 910px, calc(100vw - 30px)"
     }
 ]

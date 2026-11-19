@@ -21,14 +21,32 @@
 <isinclude template="topsort/trackingInit" />
 <isset name="grid4" value="${typeof grid4 !== 'undefined' && grid4 ? grid4 : pdict.grid4}" scope="page" />
 <isset name="topsortOrganicPosition" value="${0}" scope="page" />
+<iscomment>
+    TOPSORT in-grid banner. Decided here for the same reason the auction runs here: nothing
+    upstream of this template can hand it in. The banner itself is the last element of the
+    grid (topsort/gridBannerSlot, below the loop) and each cell only receives the classes that
+    order it above or below the banner - see getGridCellClass in topsortBanners.js. A Page
+    Designer region rendered into the grid is a cell like a tile, so cells are counted with
+    their own counter instead of the loop index.
+</iscomment>
+<isscript>
+    var tsGridBannerHelper = require('*/cartridge/scripts/helpers/topsortBanners');
+    var tsGridBannerPlacement = tsGridBannerHelper.getGridBannerPlacement(pdict.productSearch, {
+        categoryId: pdict.categoryId
+    });
+</isscript>
+<isset name="tsGridBanner" value="${tsGridBannerPlacement}" scope="page" />
+<isset name="tsGridCellIndex" value="${0}" scope="page" />
 <isloop items="${pdict.productSearch.productIds}" var="product" status="loopState">
     <isif condition="${product.isInjected !== true}">
         <isset name="topsortOrganicPosition" value="${topsortOrganicPosition + 1}" scope="page" />
     </isif>
 	<isif condition="${product.isInjected !== true && pdict.regions['gridRegion' + topsortOrganicPosition] && pdict.regions['gridRegion' + topsortOrganicPosition].region.size > 0}">
-		<isprint value="${pdict.regions['gridRegion' + topsortOrganicPosition].setClassName(pdict.gridClassName).render()}" encoding="off"/>
+		<isprint value="${pdict.regions['gridRegion' + topsortOrganicPosition].setClassName(tsGridBanner ? pdict.gridClassName + ' ' + tsGridBannerHelper.getGridCellClass(tsGridBanner, tsGridCellIndex, grid4 ? 4 : 3) : pdict.gridClassName).render()}" encoding="off"/>
+        <isset name="tsGridCellIndex" value="${tsGridCellIndex + 1}" scope="page" />
     </isif>
-    <div id="tile-${product.productID}" class="col-6 ${grid4 ? "col-lg-3" : "col-lg-4"} px-0">
+    <div id="tile-${product.productID}" class="col-6 ${grid4 ? "col-lg-3" : "col-lg-4"} px-0 ${tsGridBannerHelper.getGridCellClass(tsGridBanner, tsGridCellIndex, grid4 ? 4 : 3)}">
+        <isset name="tsGridCellIndex" value="${tsGridCellIndex + 1}" scope="page" />
 		<isif condition="${product.isInjected !== true && pdict.isEditMode && pdict.regions['gridRegion' + topsortOrganicPosition] && pdict.regions['gridRegion' + topsortOrganicPosition].region.size === 0}">
 				<isprint value="${pdict.regions['gridRegion' + topsortOrganicPosition].setClassName('emptyListRegion').render()}" encoding="off"/>
         </isif>
@@ -77,6 +95,9 @@
         </isif>
     </div>
 </isloop>
+<isif condition="${tsGridBannerHelper.hasGridBannerRow(tsGridBanner, tsGridCellIndex, grid4 ? 4 : 3)}">
+    <isinclude template="topsort/gridBannerSlot" />
+</isif>
 
 
 <input type="hidden" class="permalink" value="${pdict.productSearch.permalink}" />

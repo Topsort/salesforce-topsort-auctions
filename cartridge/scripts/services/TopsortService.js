@@ -74,7 +74,8 @@ var TopsortService = {
             bannersEnabled: current.getCustomPreferenceValue("topsortBannersEnabled"),
             bannerAssetHosts: current.getCustomPreferenceValue("topsortBannerAssetHosts"),
             trackingEnabled: current.getCustomPreferenceValue("topsortTrackingEnabled"),
-            auctionTrafficPercent: current.getCustomPreferenceValue("topsortAuctionTrafficPercent")
+            auctionTrafficPercent: current.getCustomPreferenceValue("topsortAuctionTrafficPercent"),
+            gridBannerRow: current.getCustomPreferenceValue("topsortGridBannerRow")
         };
     },
 
