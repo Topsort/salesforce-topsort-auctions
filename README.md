@@ -1119,7 +1119,11 @@ clear the field.
 
 #### Changes to the HITES base code
 
-The in-grid banner needs one change outside this cartridge, in the HITES project:
+The in-grid banner needs one change outside this cartridge, in the HITES project. It went to
+HITES with the cartridge changes in merge request
+[!2445](https://gitlab.com/hites/pe/app-pe-sfcc-hites/-/merge_requests/2445) of
+`hites/pe/app-pe-sfcc-hites`, branch `cursor/topsort-grid-banner-6003`, from `master` into
+`develop`:
 
 | File | Change | Why |
 | --- | --- | --- |
