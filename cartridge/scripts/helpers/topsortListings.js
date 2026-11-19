@@ -2,6 +2,7 @@
 
 var Logger = require("dw/system/Logger").getLogger("SponsoredSearch");
 var ProductMgr = require("dw/catalog/ProductMgr");
+var topsortCatalogIds = require("*/cartridge/scripts/helpers/topsortCatalogIds");
 var topsortEventAuth = require("*/cartridge/scripts/helpers/topsortEventAuth");
 var topsortHelpers = require("*/cartridge/scripts/helpers/topsortHelpers");
 var topsortSession = require("*/cartridge/scripts/helpers/topsortSession");
@@ -129,36 +130,48 @@ function isInjectable(product) {
 /**
  * Builds the sponsored entries for the auction winners.
  *
- * Winners already present in this page of organic results reuse that entry, so the tile
- * keeps its productSearchHit and the search engine's own visibility rules stand. Winners
- * from keyword or category bids are vetted by isInjectable before being added.
+ * Winners are catalog variant IDs, while an organic master tile is keyed by its master ID, so
+ * each winner is matched back to its tile through entryByCatalogId. That entry is reused, so
+ * the tile keeps its productSearchHit and the search engine's own visibility rules stand, but
+ * it renders the winning variant: the tile, its tile-<pid> id and the auction then all carry
+ * the ID the campaign bid on, as the colour split tiles already do. A winning variant that
+ * cannot be sold here falls back to the organic tile it came from. Winners from keyword or
+ * category bids are vetted by isInjectable before being added.
  *
  * @param {Array} winners - Listings winners from the auction response
- * @param {Array} originalEntries - The organic productIds entries
+ * @param {Object} entryByCatalogId - Organic entry for each catalog ID sent in the auction
  * @param {string} opaqueUserId - Shopper identity used for the auction
  * @returns {Array} Sponsored entries, in auction order
  */
-function buildSponsoredEntries(winners, originalEntries, opaqueUserId) {
+function buildSponsoredEntries(winners, entryByCatalogId, opaqueUserId) {
     var skippedProductIds = [];
-    // Two bids on the same product can both win a single auction. Placing it twice renders
-    // two tiles carrying the same tile-<pid> id, so the shopper sees one tile while Topsort
-    // is sent two impressions, and one click on it is reported - and charged - twice.
-    var seenProductIds = {};
+    // Two bids on the same product - or on two sizes of the same organic tile - can both win
+    // a single auction. Placing it twice renders two tiles for one product, so the shopper
+    // sees one model twice while Topsort is sent two impressions for it.
+    var seenTileIds = {};
 
     var sponsored = winners.reduce(function (acc, w) {
-        if (!w || !w.id || seenProductIds[w.id]) {
+        if (!w || !w.id) {
             return acc;
         }
-        seenProductIds[w.id] = true;
 
-        var orig = originalEntries.filter(function (e) {
-            return e.productID === w.id;
-        })[0];
+        var orig = Object.prototype.hasOwnProperty.call(entryByCatalogId, w.id)
+            ? entryByCatalogId[w.id]
+            : null;
+        var tileId = orig ? orig.productID : w.id;
+        if (seenTileIds[tileId]) {
+            return acc;
+        }
+        seenTileIds[tileId] = true;
 
         // Already on the page organically: reuse the entry and just flag it as sponsored.
         if (orig) {
             var sponsoredProduct = {};
             topsortHelpers.assignObject(sponsoredProduct, orig);
+            sponsoredProduct.organicProductID = orig.productID;
+            if (w.id !== orig.productID && isInjectable(ProductMgr.getProduct(w.id))) {
+                sponsoredProduct.productID = w.id;
+            }
             sponsoredProduct.isSponsored = true;
             sponsoredProduct.isInjected = false;
             sponsoredProduct.resolvedBidId = w.resolvedBidId;
@@ -214,7 +227,8 @@ function hasSponsoredProducts(productSearch) {
  * productSearch.productIds in place.
  *
  * Fail-open: when Topsort is disabled, the request falls outside the configured share of
- * traffic, a brand filter is selected, or the API call fails, the organic grid is left
+ * traffic, a brand filter is selected, no tile resolves to a Topsort catalog ID, or the API
+ * call fails, the organic grid is left
  * exactly as it was and the response stays cacheable.
  *
  * @param {Object} productSearch - SFRA productSearch model whose productIds are merged
@@ -249,15 +263,16 @@ function applyListingsAuction(productSearch, options) {
         return result;
     }
 
+    var originalEntries = productSearch.productIds;
+    var auctionProducts = topsortCatalogIds.buildAuctionProductIds(originalEntries);
+    if (!auctionProducts.ids.length) {
+        return result;
+    }
+
     // A freshly minted tsuid cookie cannot survive the page cache, so the response that
     // sets it has to be served dynamically.
     var opaqueUser = topsortSession.resolveOpaqueUser();
     result.cacheable = !opaqueUser.isNew;
-
-    var originalEntries = productSearch.productIds;
-    var productIDs = originalEntries.map(function (e) {
-        return e.productID;
-    });
 
     // searchQuery and category are separate auction triggers, and a search refined by a
     // category arrives with both q and cgid set. The shopper's own query is the stronger
@@ -272,7 +287,7 @@ function applyListingsAuction(productSearch, options) {
     var listingsAuction = topsortHelpers.createListingsAuction({
         type: "listings",
         slots: SLOTS,
-        products: { ids: productIDs },
+        products: { ids: auctionProducts.ids },
         opaqueUserId: opaqueUser.id
     }, {
         searchQuery: searchQuery,
@@ -288,7 +303,7 @@ function applyListingsAuction(productSearch, options) {
 
     var sponsoredTop = buildSponsoredEntries(
         extractListingsWinners(auctionResponse.data),
-        originalEntries,
+        auctionProducts.entryByCatalogId,
         opaqueUser.id
     );
 

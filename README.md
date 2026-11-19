@@ -330,6 +330,7 @@ salesforce_topsort_auctions         POST api.topsort.com/v2/events
   ├─ Order.js ..................... purchase events
   ├─ Topsort.js ................... event relay endpoint
   ├─ topsortListings.js ........... auction orchestration, winner vetting
+  ├─ topsortCatalogIds.js ......... search hits → catalog variant IDs
   ├─ topsortHelpers.js ............ placement + dedup
   ├─ topsortSession.js ............ tsuid opaque user id cookie
   └─ TopsortService.js ............ HTTP client (LocalServiceRegistry)
@@ -386,6 +387,7 @@ cartridge/
 │   ├── services/TopsortService.js ........ auctions, events, purchases
 │   └── helpers/
 │       ├── topsortListings.js ............ listings orchestration + winner vetting
+│       ├── topsortCatalogIds.js .......... grid entries → Topsort catalog variant IDs
 │       ├── topsortBanners.js ............. banner slot allowlist, auction, winner mapping
 │       ├── topsortHelpers.js ............. placement, dedup, device type, script escaping
 │       └── topsortSession.js ............. tsuid cookie / opaque user id
@@ -446,7 +448,8 @@ All of the following must hold:
 
 ### Auction triggers
 
-The request always carries `products.ids` — the organic result set for this page — plus
+The request always carries `products.ids` — the catalog variant IDs of the organic result set
+for this page, see [Product IDs sent to the auction](#product-ids-sent-to-the-auction) — plus
 exactly one context trigger:
 
 | Page | Request |
@@ -475,6 +478,41 @@ The category shape behaves the same way, and for the same reason: the auction en
 lookup, so `category` is unioned in exactly as `searchQuery` is. **A category page can
 therefore return winners that were not in this page's organic results**, which is why winner
 vetting applies to category pages and not only to search.
+
+### Product IDs sent to the auction
+
+`products.ids` carries **catalog variant IDs only**, the IDs the HITES feed sends to Topsort
+and that every campaign targets: 9 digits for HITES products (`963517001`) and 14 digits for
+marketplace sellers (`10226000713001`). Masters (`963517`, `10226000713`) and variation groups
+do not exist in the Topsort catalog, so an auction carrying them can never match a campaign.
+
+SFRA keys each grid entry by `ProductSearchHit.productID`, which is the **master ID** for a
+master hit. Sending that list as is was the cause of roughly half of HITES's auction IDs being
+6 or 11 digit masters from go-live until this fix, and of campaigns such as the Puma one
+reaching almost no auctions. `topsortCatalogIds.buildAuctionProductIds` resolves every entry
+instead:
+
+| Hit | IDs sent |
+| --- | --- |
+| Master or variation group | `hit.representedProductIDs` without the master/group ID: the variants that matched the query and the selected refinements, `firstRepresentedProductID` first |
+| Slicing group (one tile per colour) | Its represented sizes, with the hit's own variant ID first, so these tiles behave as before |
+| Variant, simple product, set, bundle | The hit's own ID |
+| Master with no represented IDs, or an entry with no hit | The default variant, then the other online variants |
+
+Every size is offered, not one per tile, because campaigns target individual sizes
+(`963517002`, `961892004`) and only the targeted ID can win. The list is filled one layer at a
+time — the best candidate of every tile, then the second of every tile — and capped at **500**
+IDs, Topsort's recommended maximum (the API accepts 10000). A 48 tile page of 25 variant
+families therefore still sends at least one variant per tile. An entry that resolves to nothing
+is left out rather than sent as a master, and a page where no entry resolves runs no auction.
+
+Winners come back as variant IDs and are matched to their tile through the same resolution,
+including IDs the cap left out. The tile is then rendered for the **winning variant**
+(`Tile-Show?pid=963517002`, `id="tile-963517002"`), so the tile, its link, the auction and the
+purchase line all carry the ID the campaign bid on, and the organic master tile is removed so
+the model is not shown twice. If the winning variant fails the [winner vetting](#winner-vetting)
+checks, the organic tile is kept and flagged sponsored instead. Two sizes of one tile winning
+the same auction produce one sponsored tile.
 
 > Ignore the `SponsoredListingsAuction` schema description in the public API reference, which
 > claims "Exactly **one** of the following fields must be set: `products`, `category`". It is
@@ -1477,6 +1515,11 @@ Confirm the `services.xml` import succeeds before relying on Topsort in producti
 - [ ] Sponsored tiles show **Patrocinado** below the price.
 - [ ] Winners appear at positions 0–1, 6–7 and at the end of the grid.
 - [ ] No SKU appears twice (sponsored + organic).
+- [ ] Every `products.ids` value in the auction request is a 9 or 14 digit variant ID (or a
+      `B…` ID), never a 6 or 11 digit master. With comm logging on, a search for
+      `zapatillas puma mujer` sends `963517001` to `963517006`, not `963517`.
+- [ ] A sponsored master product renders as the winning variant's tile, and the organic tile
+      of the same model is gone from the grid.
 - [ ] **Product count is unchanged** vs `topsortEnabled = false` when all winners came from the
       organic results.
 - [ ] Applying a facet hides sponsored products and does not break the page.
