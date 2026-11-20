@@ -989,8 +989,8 @@ curl -X POST https://api.topsort.com/public/v1/media-service/slots \
   "position": "landing",
   "page": { "name": "Hites Homepage", "url": "https://www.hites.com/" },
   "dimensions": {
-    "desktop": { "width": 3840, "height": 1098 },
-    "mobile":  { "width": 1088, "height": 1360 }
+    "desktop": { "width": 2680, "height": 821 },
+    "mobile":  { "width": 720, "height": 857 }
   }
 }'
 ```
@@ -1090,7 +1090,7 @@ The rendered width comes from the HITES grid: Bootstrap 4, `lg` at 992px, and
 
 | Slot | Rendered width | Suggested creative | Ratio |
 | --- | --- | --- | --- |
-| `home-slider-5`, `home-slider-6` | Hero, up to 1340px | **3840 × 1098** desktop, **1088 × 1360** mobile — HITES's own slide shape at 2×, recommended 2026-11-13 (see below) | 3.5:1 / 0.8:1 |
+| `home-slider-5`, `home-slider-6` | Hero, up to 1340px | **2680 × 821** desktop, **720 × 857** mobile — agreed with HITES (see below) | 3.26:1 / 0.84:1 |
 | `home-banner-full` | Full width row, up to 1310px | **2620 × 323** desktop, **706 × 365** mobile — agreed with HITES | 8.1:1 / 1.9:1 |
 | `search-side`, `category-side` | ~205px at `lg`, ~305px at `xl` | **610 × 800** desktop only | 3:4 vertical |
 | `search-bottom`, `category-bottom` | Full viewport | **2880 × 640** desktop, **1500 × 800** mobile | 4.5:1 / 1.9:1 |
