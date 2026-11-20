@@ -989,8 +989,8 @@ curl -X POST https://api.topsort.com/public/v1/media-service/slots \
   "position": "landing",
   "page": { "name": "Hites Homepage", "url": "https://www.hites.com/" },
   "dimensions": {
-    "desktop": { "width": 3840, "height": 1098 },
-    "mobile":  { "width": 1088, "height": 1360 }
+    "desktop": { "width": 2680, "height": 821 },
+    "mobile":  { "width": 720, "height": 857 }
   }
 }'
 ```
@@ -1012,8 +1012,9 @@ curl -X POST https://api.topsort.com/public/v1/media-service/slots \
 }'
 ```
 
-**Search** — `position: "search"`, no `page`. `search-side` is desktop only, so it declares
-only a desktop dimension:
+**Search** — `position: "search"`, no `page`. `search-side` declares the same 242 × 500 shape
+for both devices in Topsort. The cartridge still auctions it on desktop only (its `devices` in
+`topsort_banners.json`), so the mobile dimension is never requested:
 
 ```bash
 curl -X POST https://api.topsort.com/public/v1/media-service/slots \
@@ -1022,7 +1023,10 @@ curl -X POST https://api.topsort.com/public/v1/media-service/slots \
   -d '{
   "slotId": "search-side",
   "position": "search",
-  "dimensions": { "desktop": { "width": 610, "height": 800 } }
+  "dimensions": {
+    "desktop": { "width": 242, "height": 500 },
+    "mobile":  { "width": 242, "height": 500 }
+  }
 }'
 ```
 
@@ -1040,8 +1044,10 @@ curl -X POST https://api.topsort.com/public/v1/media-service/slots \
 }'
 ```
 
-**Category** — the same two shapes with `position: "category"`. Written out rather than left as
-"identical to search", because these are irreversible once an advertiser uploads to them:
+**Category** — `position: "category"`. `category-bottom` has the shape of `search-bottom`, but
+`category-side` is 610 × 800 and declares only a desktop dimension, unlike `search-side`.
+Written out rather than left as "like search", because these are irreversible once an
+advertiser uploads to them:
 
 ```bash
 curl -X POST https://api.topsort.com/public/v1/media-service/slots \
@@ -1090,9 +1096,10 @@ The rendered width comes from the HITES grid: Bootstrap 4, `lg` at 992px, and
 
 | Slot | Rendered width | Suggested creative | Ratio |
 | --- | --- | --- | --- |
-| `home-slider-5`, `home-slider-6` | Hero, up to 1340px | **3840 × 1098** desktop, **1088 × 1360** mobile — HITES's own slide shape at 2×, recommended 2026-11-13 (see below) | 3.5:1 / 0.8:1 |
+| `home-slider-5`, `home-slider-6` | Hero, up to 1340px | **2680 × 821** desktop, **720 × 857** mobile — agreed with HITES (see below) | 3.26:1 / 0.84:1 |
 | `home-banner-full` | Full width row, up to 1310px | **2620 × 323** desktop, **706 × 365** mobile — agreed with HITES | 8.1:1 / 1.9:1 |
-| `search-side`, `category-side` | ~205px at `lg`, ~305px at `xl` | **610 × 800** desktop only | 3:4 vertical |
+| `search-side` | ~205px at `lg`, ~305px at `xl` | **242 × 500** desktop, and the same 242 × 500 declared for mobile, which the cartridge never auctions | 0.48:1 vertical |
+| `category-side` | ~205px at `lg`, ~305px at `xl` | **610 × 800** desktop only | 3:4 vertical |
 | `search-bottom`, `category-bottom` | Full viewport | **2880 × 640** desktop, **1500 × 800** mobile | 4.5:1 / 1.9:1 |
 
 Two things drive these:
@@ -1101,8 +1108,8 @@ Two things drive these:
   band at 390px, which is why the home and footer slots have a different mobile shape rather
   than a scaled copy of the desktop one.
 - **The side rail is narrow.** At `lg` it is roughly 205px of content inside the 940px
-  container, so a 610px creative already covers it at 2×. The creative is downloaded at its
-  uploaded size, so a larger one only costs bandwidth.
+  container, so a 610px creative already covers it at 2×, and a 242px one covers it at about
+  1.2×. The creative is downloaded at its uploaded size, so a larger one only costs bandwidth.
 
 **The hero slides have to be the shape of HITES's own slides.** The hero carousel does not
 use slick's `adaptiveHeight`, so the track takes the height of its tallest slide: a sponsored
@@ -1116,14 +1123,13 @@ images, measured on the development instance on 2026-11-13 (the first three slid
 | 370–539px (most phones) | 544 × 680 | 0.8:1 (4:5, portrait) |
 | 320–369px | 370 × 463 | 0.8:1 |
 
-The sizes first agreed for the sponsored slides, 2680 × 821 (3.26:1) and 720 × 857 (0.84:1),
-do not match: on desktop the sponsored slide is about 27px taller at 1310px, and on mobile it
-is the one left with the band. The sandbox mock campaigns are worse, a 1500 × 1200 (1.25:1)
-mobile creative that renders about 312px tall on a 390px phone next to HITES's 487px slides,
-which leaves a band of about 175px. The recommendation sent to HITES is the HITES shape at 2×
-for high density screens: **3840 × 1098** desktop and **1088 × 1360** mobile, pending HITES's
-confirmation that production uses the same shapes. The Topsort slots and the campaigns'
-creatives then have to follow.
+The sizes agreed for the sponsored slides, 2680 × 821 (3.26:1) and 720 × 857 (0.84:1), are
+close to that shape but not equal: on desktop the sponsored slide is about 27px taller at
+1310px, and on mobile it is the one left with the band. The sandbox mock campaigns are worse, a
+1500 × 1200 (1.25:1) mobile creative that renders about 312px tall on a 390px phone next to
+HITES's 487px slides, which leaves a band of about 175px. HITES's shape at 2× (3840 × 1098
+desktop, 1088 × 1360 mobile) was recommended on 2026-11-13 and not adopted: the slots are
+created at 2680 × 821 and 720 × 857, confirmed on 2026-11-20.
 
 **Tablets** are classified as mobile by the user agent check (iPad, Android tablets), so they
 get the portrait creative while HITES shows its landscape 992 × 284 image there. Whether that
