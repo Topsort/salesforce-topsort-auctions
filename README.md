@@ -1116,14 +1116,13 @@ images, measured on the development instance on 2026-11-13 (the first three slid
 | 370–539px (most phones) | 544 × 680 | 0.8:1 (4:5, portrait) |
 | 320–369px | 370 × 463 | 0.8:1 |
 
-The sizes first agreed for the sponsored slides, 2680 × 821 (3.26:1) and 720 × 857 (0.84:1),
-do not match: on desktop the sponsored slide is about 27px taller at 1310px, and on mobile it
-is the one left with the band. The sandbox mock campaigns are worse, a 1500 × 1200 (1.25:1)
-mobile creative that renders about 312px tall on a 390px phone next to HITES's 487px slides,
-which leaves a band of about 175px. The recommendation sent to HITES is the HITES shape at 2×
-for high density screens: **3840 × 1098** desktop and **1088 × 1360** mobile, pending HITES's
-confirmation that production uses the same shapes. The Topsort slots and the campaigns'
-creatives then have to follow.
+The sizes agreed for the sponsored slides, 2680 × 821 (3.26:1) and 720 × 857 (0.84:1), are
+close to that shape but not equal: on desktop the sponsored slide is about 27px taller at
+1310px, and on mobile it is the one left with the band. The sandbox mock campaigns are worse, a
+1500 × 1200 (1.25:1) mobile creative that renders about 312px tall on a 390px phone next to
+HITES's 487px slides, which leaves a band of about 175px. HITES's shape at 2× (3840 × 1098
+desktop, 1088 × 1360 mobile) was recommended on 2026-11-13 and not adopted: the slots are
+created at 2680 × 821 and 720 × 857, confirmed on 2026-11-20.
 
 **Tablets** are classified as mobile by the user agent check (iPad, Android tablets), so they
 get the portrait creative while HITES shows its landscape 992 × 284 image there. Whether that
