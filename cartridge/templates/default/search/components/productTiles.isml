@@ -1,6 +1,12 @@
 <isinclude template="topsort/trackingInit" />
 <isloop items="${pdict.productSearch.productIds}" status="tilesLoop" var="product">
-    <div id="tile-${product.productID}" class="col-6 ${(typeof grid4 != 'undefined' && grid4) ? "col-lg-3" : "col-lg-4"} px-0" data-product-position="${tilesLoop.index}" data-product-type="${!product.isSponsored ? product.productSearchHit.hitType : ""}">
+    <iscomment>
+        tsGridSlotId and tsGridSpace are set by the page template, never here, so the banner
+        only appears on a full page render. The grid is re-rendered on its own for infinite
+        scroll, and without that the shopper would get another banner with every batch.
+    </iscomment>
+    <isset name="tsIsGridBannerCell" value="${typeof tsGridSlotId !== 'undefined' && !!tsGridSlotId && typeof tsGridSpace !== 'undefined' && tilesLoop.count === tsGridSpace}" scope="page" />
+    <div id="tile-${product.productID}" class="col-6 ${(typeof grid4 != 'undefined' && grid4) ? "col-lg-3" : "col-lg-4"} px-0 ${tsIsGridBannerCell ? 'ts-grid-cell--banner' : ''}" data-product-position="${tilesLoop.index}" data-product-type="${!product.isSponsored ? product.productSearchHit.hitType : ""}">
         <isif condition="${product.isSponsored === true}">
             <iscomment>
                 categoryId and searchQuery come straight from the shopper's query string, so
@@ -43,6 +49,18 @@
             </isobject>
         <iselse/>
             <isinclude url="${topsortTileUrl}" />
+        </isif>
+        <isif condition="${tsIsGridBannerCell}">
+            <iscomment>
+                The in grid banner takes the place of this product. It is laid over the tile
+                instead of replacing it in the markup because the banner is fetched by a
+                remote include: the page is already built by the time the auction is known,
+                so the tile stays as what the cell falls back to. When no bid wins, the
+                fragment hides its own wrapper and the product is simply there.
+            </iscomment>
+            <isset name="tsSlotId" value="${tsGridSlotId}" scope="page" />
+            <isset name="tsSlotClass" value="ts-banner-slot--grid" scope="page" />
+            <isinclude template="topsort/bannerSlot" />
         </isif>
     </div>
 </isloop>

@@ -1,13 +1,24 @@
 <iscomment>
     Override of module_pagedesigner experience/components/dynamic/productList/categoryResults.isml.
 
-    Identical to the original apart from the two Topsort banner slots marked below. ISML has
+    Identical to the original apart from the Topsort banner slots marked below. ISML has
     no module.superModule, so the rest of this file is a copy and a later change to the
     module_pagedesigner original has to be brought across by hand - the README lists this
     under the overrides that need a diff check.
 </iscomment>
+<isscript>
+    var tsPageCategoryId = (pdict.productSearch && pdict.productSearch.category) ? pdict.productSearch.category.id : (pdict.categoryId || '');
+    var tsSlots = require('*/cartridge/scripts/helpers/topsortBanners').getListingSlots({
+        categoryId: tsPageCategoryId
+    });
+</isscript>
 <isset name="tsSearchQuery" value="${''}" scope="page" />
-<isset name="tsCategoryId" value="${(pdict.productSearch && pdict.productSearch.category) ? pdict.productSearch.category.id : (pdict.categoryId || '')}" scope="page" />
+<isset name="tsCategoryId" value="${tsPageCategoryId}" scope="page" />
+<isset name="tsSideSlotId" value="${tsSlots.side}" scope="page" />
+<isset name="tsTopSlotId" value="${tsSlots.top}" scope="page" />
+<isset name="tsFooterSlotId" value="${tsSlots.bottom}" scope="page" />
+<isset name="tsGridSlotId" value="${tsSlots.grid}" scope="page" />
+<isset name="tsGridSpace" value="${tsSlots.gridSpace}" scope="page" />
 <section id="main" class="catalog__body">
     <div class="plp-hero-banner-slot">
         <isslot id="plp-hero-banner" description="Content slot for full-width banner" context="global" />
@@ -19,6 +30,14 @@
         <isset name="hideSidebar" value="${pdict.category && pdict.category.custom.viewMode && (pdict.category.custom.viewMode == "grid3NoSidebar" || pdict.category.custom.viewMode == "grid4NoSidebar")}" scope="page" />
         <isset name="listView" value="${pdict.category && pdict.category.custom.productsViewMode && pdict.category.custom.productsViewMode == "list"}" scope="page" />
         <isset name="grid4" value="${hideSidebar && pdict.category.custom.viewMode == "grid4NoSidebar"}" scope="page" />
+        <iscomment>
+            TOPSORT in grid banner. The list view puts one product on a row the full width of
+            the column, which is not a shape a tile sized creative can fill, so the placement
+            is skipped there.
+        </iscomment>
+        <isif condition="${listView}">
+            <isset name="tsGridSlotId" value="${null}" scope="page" />
+        </isif>
 
         <input type="hidden" id="hiddenSidebar" name="hideSidebar" value="${hideSidebar}"/>
         <input type="hidden" name="grid4" value="${grid4}"/>
@@ -100,8 +119,8 @@
                             inside its own parent. The column stretches to the height of the
                             results next to it, which is the distance the banner follows.
                         </iscomment>
-                        <isif condition="${!hideSidebar && pdict.productSearch.productIds.length > 0}">
-                            <isset name="tsSlotId" value="${'category-side'}" scope="page" />
+                        <isif condition="${tsSideSlotId && !hideSidebar && pdict.productSearch.productIds.length > 0}">
+                            <isset name="tsSlotId" value="${tsSideSlotId}" scope="page" />
                             <isset name="tsSlotClass" value="${'d-none d-lg-block'}" scope="page" />
                             <isinclude template="topsort/bannerSlot" />
                         </isif>
@@ -119,6 +138,15 @@
                         </div>
                     </div>
                     <div class="col-12 ${hideSidebar ? "" : "col-lg-9"} product-grid pt-0" id="product-list">
+                        <iscomment>
+                            TOPSORT top banner. Only the Especiales pages carry one, so this
+                            is empty on every other listing page.
+                        </iscomment>
+                        <isif condition="${tsTopSlotId && pdict.productSearch.productIds.length > 0}">
+                            <isset name="tsSlotId" value="${tsTopSlotId}" scope="page" />
+                            <isset name="tsSlotClass" value="${''}" scope="page" />
+                            <isinclude template="topsort/bannerSlot" />
+                        </isif>
 						<isif condition="${hideSidebar}">
                             <div class="row category-title-wrapper px-3${hideSidebar ? "" : "d-none"}">
                                 <div class="products-filters-header col-12 col-lg-3">
@@ -243,9 +271,9 @@
         TOPSORT footer banner. Outside the .container and outside the col-lg-9 grid column so
         it runs the full width of the viewport, which is what this placement was specified as.
     </iscomment>
-    <isif condition="${productsNotEmpty}">
+    <isif condition="${tsFooterSlotId && productsNotEmpty}">
         <div class="mt-8">
-            <isset name="tsSlotId" value="${'category-bottom'}" scope="page" />
+            <isset name="tsSlotId" value="${tsFooterSlotId}" scope="page" />
             <isset name="tsSlotClass" value="${''}" scope="page" />
             <isinclude template="topsort/bannerSlot" />
         </div>

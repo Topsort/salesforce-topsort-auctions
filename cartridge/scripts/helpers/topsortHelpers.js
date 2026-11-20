@@ -138,6 +138,50 @@ function resolveTopsortCategoryId(categoryId) {
 }
 
 /**
+ * Returns the first level category a category hangs from.
+ *
+ * The storefront builds a category URL from the category path, so the first segment of the
+ * path is the display name of this ancestor. Walking the tree is what makes a URL prefix
+ * answerable from a category id alone, which is what the banner fragment is given: it never
+ * sees the URL the shopper is on, only the cgid passed to it.
+ *
+ * Never throws: it is called while a listing page renders, and the answer only decides which
+ * banner slot runs.
+ *
+ * @param {string} categoryId - The catalog category ID from SFCC
+ * @returns {string|null} The first level ancestor's ID, the category's own ID when it is
+ *     already first level, or null when the category cannot be resolved
+ */
+function resolveTopLevelCategoryId(categoryId) {
+    if (!categoryId) {
+        return null;
+    }
+
+    try {
+        var CatalogMgr = require("dw/catalog/CatalogMgr");
+        var category = CatalogMgr.getCategory(String(categoryId));
+
+        if (!category) {
+            // Category ids reach the storefront lowercased in some URLs, and getCategory is
+            // case sensitive.
+            category = CatalogMgr.getCategory(String(categoryId).toLowerCase());
+        }
+
+        // The root is the catalog itself rather than a browsable category, so the last
+        // category before it is the one whose name opens the URL.
+        while (category && category.parent && !category.parent.root) {
+            category = category.parent;
+        }
+
+        return category ? category.ID : null;
+    } catch (e) {
+        require("dw/system/Logger").getLogger("SponsoredSearch")
+            .error("Topsort could not resolve the top level category of {0}: {1}", categoryId, e.message);
+        return null;
+    }
+}
+
+/**
  * Derives the device type from the request user agent.
  *
  * Resolved server-side rather than trusted from the browser: the events relay reports this
@@ -179,6 +223,7 @@ module.exports = {
     assignObject: assignObject,
     toScriptJson: toScriptJson,
     resolveTopsortCategoryId: resolveTopsortCategoryId,
+    resolveTopLevelCategoryId: resolveTopLevelCategoryId,
     getDeviceType: getDeviceType,
     isInAuctionTrafficSample: isInAuctionTrafficSample
 };

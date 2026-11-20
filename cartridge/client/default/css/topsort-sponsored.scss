@@ -111,6 +111,74 @@
     }
 }
 
+// The Especiales top banner runs the width of the results column, above the grid.
+//
+// The frame is the shape agreed with HITES for this placement, per device: 2000 x 300 on
+// desktop, 1320 x 352 on mobile. A creative of any other shape is cropped to it rather than
+// allowed to change the height of the column, and the frame keys on the device the auction
+// ran for because that is the device the returned creative was uploaded against.
+.ts-banner-slot--especiales-top {
+    .ts-banner {
+        margin-bottom: 1.5rem;
+    }
+
+    .ts-banner__image {
+        aspect-ratio: 2000 / 300;
+        object-fit: cover;
+    }
+
+    .ts-banner--mobile .ts-banner__image {
+        aspect-ratio: 1320 / 352;
+    }
+}
+
+// The in grid banner takes the place of one product in the grid.
+//
+// It is laid over the tile it replaces rather than rendered instead of it. The banner comes
+// from a remote include, so the page is already built by the time anyone knows whether a bid
+// won: dropping the product up front would leave a hole in the grid on every page where no
+// banner is returned, and the whole point of this placement is that it costs the grid exactly
+// one product when it is filled and nothing when it is not. The fragment hides its own
+// wrapper when it comes back empty, which uncovers the tile underneath.
+//
+// There is no frame here, unlike the other placements: the cell is as tall as the row it sits
+// in, which depends on the product cards beside it, so the creative is scaled to the cell and
+// cropped. Creatives for these slots have to be cut to the shape of a product tile.
+.ts-grid-cell--banner {
+    position: relative;
+}
+
+.ts-banner-slot--grid {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    // Covers the tile underneath, which stays in the markup as the fallback.
+    z-index: 1;
+    background: #fff;
+
+    .ts-banner,
+    .ts-banner__link,
+    picture {
+        display: block;
+        height: 100%;
+    }
+
+    .ts-banner__image {
+        height: 100%;
+        object-fit: cover;
+    }
+}
+
+// Where the browser supports :has, the replaced tile is taken out of the cell altogether
+// rather than only covered, so it cannot be reached with the keyboard from behind the
+// banner. The cell keeps its height either way: the row is as tall as the product cards
+// beside it. Browsers without :has fall back to the banner covering the tile.
+.ts-grid-cell--banner:has(.ts-banner) > *:not(.ts-banner-slot--grid) {
+    display: none;
+}
+
 // Shown in the Page Designer editor in place of a banner, which otherwise renders nothing
 // there and leaves the merchandiser an invisible component they cannot select.
 .ts-banner-placeholder {

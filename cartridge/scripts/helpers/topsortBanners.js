@@ -88,7 +88,113 @@ function buildAuction(slot, ctx, deviceType, opaqueUserId) {
         }
     }
 
+    // Especiales slots bid on the first level category the page hangs from rather than on
+    // the leaf the shopper is browsing: the campaigns are sold against the Especiales event
+    // as a whole, and the ids further down that branch are not named consistently. The id
+    // comes from the slot configuration rather than from the request for the same reason
+    // the other trigger types do: the fragment's query string is shopper editable.
+    if (slot.page === "especiales") {
+        var sluggedRootId = topsortHelpers.resolveTopsortCategoryId(slot.rootCategoryId);
+        if (sluggedRootId) {
+            auction.category = { id: sluggedRootId };
+        }
+    }
+
     return auction;
+}
+
+/**
+ * Returns the first level category id that marks a listing page as an Especiales page.
+ *
+ * Read from the slot configuration so the branch is named in one place.
+ *
+ * @returns {string|null} The configured first level category id, or null when no Especiales
+ *     slot is configured
+ */
+function getEspecialesRootCategoryId() {
+    for (var i = 0; i < slotConfig.length; i += 1) {
+        if (slotConfig[i].page === "especiales" && slotConfig[i].rootCategoryId) {
+            return slotConfig[i].rootCategoryId;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Reports whether a category page belongs to the Especiales branch of the catalog.
+ *
+ * Decided from the catalog rather than from the URL because the banner is rendered by a
+ * remote include, which is requested on its own URL and never sees the one the shopper is
+ * on. The first level ancestor is also what the URL's first segment is built from, so the
+ * answer matches "the URL starts with /especiales" without having to parse a path.
+ *
+ * @param {string} categoryId - Raw SFCC category id of the page
+ * @returns {boolean} True when the page sits under the Especiales category
+ */
+function isEspecialesCategory(categoryId) {
+    var rootCategoryId = getEspecialesRootCategoryId();
+
+    if (!categoryId || !rootCategoryId) {
+        return false;
+    }
+
+    var topLevelId = topsortHelpers.resolveTopLevelCategoryId(categoryId);
+
+    return !!topLevelId && topLevelId.toLowerCase() === rootCategoryId.toLowerCase();
+}
+
+/**
+ * Picks the banner slots a listing page renders.
+ *
+ * One place decides this for all three listing templates, so the search page, the category
+ * page and the Page Designer category page cannot drift apart. Any placement may come back
+ * empty, and the templates skip it.
+ *
+ * Especiales pages carry a banner above the grid instead of the one below it: the page is a
+ * campaign landing page, where the banner is part of what the shopper came for, and the
+ * footer placement sits below content they rarely reach.
+ *
+ * @param {Object} ctx - Page context
+ * @param {string} [ctx.categoryId] - Raw SFCC category id, on category pages
+ * @param {string} [ctx.searchQuery] - Shopper search term, on search pages
+ * @returns {Object} Slot ids by placement, each null when the page has no such banner, plus
+ *     the grid space the in-grid banner takes
+ */
+function getListingSlots(ctx) {
+    var context = ctx || {};
+    var slots = {
+        side: null,
+        top: null,
+        bottom: null,
+        grid: null,
+        gridSpace: 0
+    };
+
+    if (context.searchQuery) {
+        slots.side = "search-side";
+        slots.bottom = "search-bottom";
+        slots.grid = "search-grid-8";
+    } else if (isEspecialesCategory(context.categoryId)) {
+        // The side rail is the same placement it is on any other category page: Especiales
+        // adds a banner above the grid, it does not replace the rail.
+        slots.side = "category-side";
+        slots.top = "especiales-top";
+        slots.grid = "especiales-grid-8";
+    } else {
+        slots.side = "category-side";
+        slots.bottom = "category-bottom";
+        slots.grid = "category-grid-8";
+    }
+
+    var gridSlot = getSlot(slots.grid);
+    slots.gridSpace = gridSlot ? (gridSlot.space || 0) : 0;
+
+    if (!slots.gridSpace) {
+        slots.grid = null;
+    }
+
+    return slots;
 }
 
 /**
@@ -307,6 +413,8 @@ function resolveBanner(slotId, ctx) {
 
 module.exports = {
     getSlot: getSlot,
+    getListingSlots: getListingSlots,
+    isEspecialesCategory: isEspecialesCategory,
     isSlotOnDevice: isSlotOnDevice,
     isAllowedAssetUrl: isAllowedAssetUrl,
     buildAuction: buildAuction,

@@ -4,7 +4,7 @@ Topsort retail media for the HITES SFRA storefront. Two formats:
 
 - **Sponsored listings** — an auction on search and category listing pages whose winning
   products are merged into the grid and labelled **Patrocinado**.
-- **Sponsored banners** — seven image slots across the home page, search and category pages,
+- **Sponsored banners** — eleven image slots across the home page, search and category pages,
   each filled by its own auction. See [Sponsored banners](#sponsored-banners).
 
 Impressions, clicks and purchases are reported back to Topsort through a server-side relay,
@@ -292,7 +292,7 @@ Then invalidate the code cache in Business Manager.
 | Winner placement | Product grid | Positions 0–1, 6–7, and the end of the grid |
 | SKU deduplication | Product grid | A winner already in the organic results is moved, not duplicated |
 | "Patrocinado" label | Product tile and banner | Localised through a resource bundle |
-| Sponsored banners | Home page, search and category pages | Seven slots, one auction each, every one fetched through the `Topsort-Banner` remote include |
+| Sponsored banners | Home page, search and category pages | Eleven slots, one auction each, every one fetched through the `Topsort-Banner` remote include |
 | Impression tracking | Browser | Fires on real viewport visibility, batched per grid |
 | Click tracking | Browser | Fires on tile or banner click, `keepalive` so it survives navigation |
 | Purchase tracking | `Order-Confirm` | Server-side, token-validated, idempotent |
@@ -383,7 +383,7 @@ cartridge/
 │   ├── assets/topsortbanner.js ........... PD banner component render (unused on HITES's home page)
 │   └── assets/topsortbanner.json ......... PD banner component definition
 ├── scripts/
-│   ├── config/topsort_banners.json ....... the seven banner slots
+│   ├── config/topsort_banners.json ....... the banner slots
 │   ├── services/TopsortService.js ........ auctions, events, purchases
 │   └── helpers/
 │       ├── topsortListings.js ............ listings orchestration + winner vetting
@@ -397,12 +397,12 @@ cartridge/
 │   │   ├── topsort/banner.isml ........... the banner fragment itself
 │   │   ├── topsort/bannerSlot.isml ....... places a slot on a listing page
 │   │   ├── product/productTile.isml ...... Patrocinado label
-│   │   ├── search/components/productTiles.isml ......... grid (search / non-PD category)
+│   │   ├── search/components/productTiles.isml ......... grid (search / non-PD category) + in grid banner
 │   │   ├── search/searchResultsNoDecorator.isml ........ override: banner slots
 │   │   ├── search/categoryResultsNoDecorator.isml ...... override: banner slots
 │   │   ├── experience/.../assets/topsortbanner.isml .... PD banner component markup
 │   │   ├── experience/.../productList/categoryResults.isml ... override: banner slots
-│   │   └── experience/.../productGrid_hites.isml ....... grid (Page Designer) + auction
+│   │   └── experience/.../productGrid_hites.isml ....... grid (Page Designer) + auction + in grid banner
 │   └── resources/topsort.properties ...... label.sponsored, label.banner.alt
 └── metadata/topsort_sponsored_metadata.xml  standalone reference copy (see Deployment)
 ```
@@ -663,7 +663,7 @@ value the instance is appending.
 
 ## Sponsored banners
 
-Seven image slots, each filled by its own auction. Banners are a separate format from
+Eleven image slots, each filled by its own auction. Banners are a separate format from
 sponsored listings: different config, different placements, and their own kill switch
 (`topsortBannersEnabled`). Turning banners off leaves listings running untouched, and vice
 versa.
@@ -679,6 +679,23 @@ versa.
 | `search-bottom` | Search | desktop, mobile | Full width, below the whole grid |
 | `category-side` | Category | **desktop only** | Left rail under the filters, sticky |
 | `category-bottom` | Category | desktop, mobile | Full width, below the whole grid |
+| `especiales-top` | Especiales | desktop, mobile | Above the grid, the width of the results column |
+| `search-grid-8` | Search | desktop, mobile | In the grid, in place of the 8th product |
+| `category-grid-8` | Category | desktop, mobile | In the grid, in place of the 8th product |
+| `especiales-grid-8` | Especiales | desktop, mobile | In the grid, in place of the 8th product |
+
+**Especiales** pages are the category pages that hang from the first level `Especiales`
+category, which is also what makes their URL start with `/especiales`. They are campaign
+landing pages, so they carry a banner above the grid instead of the one below it: the footer
+placement sits past content the shopper rarely reaches, while the top one is part of what
+they came for. Everything else about them is a category page, including the side rail, which
+stays `category-side`.
+
+| Page | Side | Top | In grid | Bottom |
+| --- | --- | --- | --- | --- |
+| Search | `search-side` | — | `search-grid-8` | `search-bottom` |
+| Category | `category-side` | — | `category-grid-8` | `category-bottom` |
+| Especiales | `category-side` | `especiales-top` | `especiales-grid-8` | — |
 
 The side slots are **not auctioned on mobile**. The left rail does not exist below the `lg`
 breakpoint, so bidding for it would charge advertisers for an impression that can never be
@@ -689,7 +706,9 @@ Slots live in `cartridge/scripts/config/topsort_banners.json`:
 | Field | Meaning |
 | --- | --- |
 | `slotId` | Must match the `slotId` created in Topsort, exactly |
-| `page` | `home`, `search` or `category`. Decides the auction trigger |
+| `page` | `home`, `search`, `category` or `especiales`. Decides the auction trigger |
+| `rootCategoryId` | Especiales slots only. The first level category that marks the page, and the category the auction bids on |
+| `space` | In grid slots only. Which space of the product grid the banner takes |
 | `slots` | Winners requested. Always 1 here — a slot renders one banner |
 | `position` | Reported as `placement.position` on impressions and clicks |
 | `devices` | Which devices auction this slot at all |
@@ -716,13 +735,14 @@ behaviour**. PLP caching stays driven solely by sponsored listings, exactly as i
 `topsortListings.js` is not involved in banners at all.
 
 The price is **one auction per rendered slot** instead of one per page: up to three on the
-home page, up to two on a PLP. The storefront already remote-includes every product tile, so
+home page, and up to three on a PLP (the side rail, the in grid banner, and the one below or
+above the grid). The storefront already remote-includes every product tile, so
 the extra sub-requests are not new in kind, but they do sit on the critical path. Cutting the
 service timeout (see [Page cache impact](#page-cache-impact)) matters more with banners on.
 
 ```
 Home page (cached)                 PLP (cached unless listings won)
-  └─ HTML content slot ×3            └─ bannerSlot.isml ×2
+  └─ HTML content slot ×3            └─ bannerSlot.isml ×3
        └─ $include()$ ──┐                 └─ isinclude ──┐
                         ▼                                ▼
                  Topsort-Banner  (server.middleware.include, cachePeriod = 0)
@@ -769,6 +789,24 @@ the Topsort catalog holds `sweater-mujer` and bid retrieval is exact:
 **Search** — adds `searchQuery` instead. A search scoped to a category sends the search shape:
 the shopper's own query is the stronger statement of intent, and it also picks which slot runs
 (`search-side` rather than `category-side`). This mirrors what listings do.
+
+**Especiales** — a category auction whose category is the first level `Especiales` category
+rather than the one the shopper is browsing. The campaigns are sold against the event as a
+whole, and the ids further down that branch are not named consistently, so a leaf trigger
+would make a bid land on some Especiales pages and not others. The id comes from the slot's
+`rootCategoryId`, not from the request, for the same reason the other triggers do not come
+from the query string:
+
+```json
+{ "auctions": [ {
+  "type": "banners", "slots": 1, "slotId": "especiales-top",
+  "opaqueUserId": "b1e0…", "device": "mobile",
+  "category": { "id": "especiales" }
+} ] }
+```
+
+The side rail on those pages is still `category-side`, and still bids on the category the
+shopper is browsing.
 
 ### Response and rendering
 
@@ -822,6 +860,37 @@ while the document is parsed and the carousel is initialised on `$(document).rea
 node is gone before slick counts its slides. On the PLPs `bannerSlot.isml` asks for
 `preserveWrapper`, so the wrapper is hidden rather than removed.
 
+### The in grid banner
+
+`search-grid-8`, `category-grid-8` and `especiales-grid-8` take the place of one product: the
+banner fills the 8th space of the grid and the grid shows one product fewer. It does not push
+the rest of the grid down.
+
+The product in that space is still rendered, and the banner is laid over it. This is forced by
+the remote include: the page is finished long before anyone knows whether a bid won, so a cell
+built empty would stay empty on every page where none did. Keeping the tile underneath makes
+the placement cost the grid exactly one product when it is filled and nothing when it is not —
+the fragment hides its own wrapper when it comes back empty, which uncovers the tile. Where
+the browser supports `:has`, the covered tile is taken out of the cell as well, so it cannot be
+reached with the keyboard from behind the banner.
+
+Three limits come with this:
+
+- **One per page render, not one per batch.** The page templates set the slot, and the grid
+  that re-renders on its own for infinite scroll does not, so later batches carry no banner.
+- **Grids shorter than 8 products carry no banner.** The space has to exist.
+- **Not in the list view.** One product per full width row is not a shape a tile sized
+  creative can fill.
+
+A refinement brings a fresh banner with it. The storefront replaces `.product-grid` when a
+filter is clicked, and the cell is inside it, so the re-render runs the auction again — unlike
+the side and footer banners, which sit outside what is replaced and keep showing the creative
+from before the refinement (**H4** in [Resolved review findings](#resolved-review-findings)).
+
+The cell has no fixed frame, unlike the other placements: it is as tall as the row it sits in,
+which depends on the product cards beside it. The creative is scaled to the cell and cropped
+to fit, so creatives for these slots have to be cut to the shape of a product tile.
+
 ### Events
 
 Banners use the same rules as tiles: an impression at 50% visible for one continuous second, a
@@ -857,7 +926,7 @@ HTML instead of from a template. Nothing about the auction, rendering, tracking 
 switches differs from a PLP banner.
 
 A client-side alternative (banners.js and analytics.js against a same-origin proxy that kept
-the API key server-side) was built and set aside, so that all seven slots share one code path
+the API key server-side) was built and set aside, so that every slot shares one code path
 and one tracking library.
 
 **What HITES creates.** One content asset per slot in `HITESSharedLibrary`, its body edited in
@@ -1068,6 +1137,30 @@ curl -X POST https://api.topsort.com/public/v1/media-service/slots \
 }'
 ```
 
+**Especiales** — `especiales-top` is a category page placement, so it is `position:
+"category"` as well. There is no separate Especiales position in the API, and none is needed:
+which pages it renders on is decided by the cartridge:
+
+```bash
+curl -X POST https://api.topsort.com/public/v1/media-service/slots \
+  -H "Authorization: Bearer $TSC_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "slotId": "especiales-top",
+  "position": "category",
+  "dimensions": {
+    "desktop": { "width": 2000, "height": 300 },
+    "mobile":  { "width": 1320, "height": 352 }
+  }
+}'
+```
+
+**The three in grid slots are not created yet.** `search-grid-8`, `category-grid-8` and
+`especiales-grid-8` are configured in the cartridge and render nothing until they exist in
+Topsort, which is the fail-open path: an unconfigured slot comes back with no winner and the
+product underneath stays visible. Their dimensions have to be agreed first, and they have to
+be the shape of a product tile — see [Creative dimensions](#creative-dimensions).
+
 To check what exists already. Note this is a `POST` with a JSON body and **no `-G`** — an
 earlier revision of this file combined `-G` with `-X POST`, which moves the body into the
 query string unencoded and sends an empty POST:
@@ -1094,6 +1187,8 @@ The rendered width comes from the HITES grid: Bootstrap 4, `lg` at 992px, and
 | `home-banner-full` | Full width row, up to 1310px | **2620 × 323** desktop, **706 × 365** mobile — agreed with HITES | 8.1:1 / 1.9:1 |
 | `search-side`, `category-side` | ~205px at `lg`, ~305px at `xl` | **610 × 800** desktop only | 3:4 vertical |
 | `search-bottom`, `category-bottom` | Full viewport | **2880 × 640** desktop, **1500 × 800** mobile | 4.5:1 / 1.9:1 |
+| `especiales-top` | Results column, up to 980px | **2000 × 300** desktop, **1320 × 352** mobile | 6.7:1 / 3.75:1 |
+| `search-grid-8`, `category-grid-8`, `especiales-grid-8` | One grid column: ~327px at `xl`, ~50vw on a phone | **To be agreed — has to be the shape of a product tile** | portrait, see below |
 
 Two things drive these:
 
@@ -1123,6 +1218,22 @@ close to that shape but not equal: on desktop the sponsored slide is about 27px 
 HITES's 487px slides, which leaves a band of about 175px. HITES's shape at 2× (3840 × 1098
 desktop, 1088 × 1360 mobile) was recommended on 2026-11-13 and not adopted: the slots are
 created at 2680 × 821 and 720 × 857, confirmed on 2026-11-20.
+
+**The in grid creatives have to be tile shaped, and the shape is not exact.** The banner
+fills one grid column and is as tall as the row it sits in, and that height comes from the
+product cards beside it: a card is a square product image (served at 306 × 306) plus its
+price and label block, so the cell is portrait, roughly 2:3, but it moves with the content of
+the cards in that row. There is no ratio that fits every row, so the creative is scaled to
+the cell and cropped. What that means for whoever specifies these:
+
+- Aim for a portrait creative around **2:3** at 2× for high density screens, so roughly
+  660 × 990, and keep anything that has to be read away from the top and bottom edges, which
+  are what gets cropped.
+- A landscape creative is the one case that goes badly wrong: cropped to a portrait cell it
+  loses most of its width.
+- The slots cannot be created until these are agreed, because Topsort validates every
+  uploaded creative against the slot's dimensions and a slot's size cannot be edited
+  afterwards — see [Changing a slot's dimensions](#changing-a-slots-dimensions).
 
 **Tablets** are classified as mobile by the user agent check (iPad, Android tablets), so they
 get the portrait creative while HITES shows its landscape 992 × 284 image there. Whether that
@@ -1323,7 +1434,7 @@ links to the step that has the detail.
 | 4 | Merchant Tools → Site Preferences → Custom Preferences → Topsort | API key, URL, asset hosts, traffic share; `topsortEnabled` last | [3](#3-set-preference-values) |
 | 5 | Administration → Operations → Services | `topsort` enabled, with its profile and credential | [4](#4-enable-the-service) |
 | 6 | Pipeline | Build `topsort-sponsored.css` and `product-engagement.js` | [5](#5-build-client-assets) |
-| 7 | Topsort | The seven banner slots exist, with campaigns bidding on them | [6](#6-banners) |
+| 7 | Topsort | The banner slots exist, with campaigns bidding on them | [6](#6-banners) |
 | 8 | Merchant Tools → Content → Libraries → HITESSharedLibrary | The three home content assets | [6](#6-banners) |
 | 9 | Merchant Tools → Online Marketing → Content Slots | Slider assets in **every** `homepage-hero-banner` configuration; a configuration for `homepage-topsort-banner-full` | [6](#6-banners) |
 | 10 | Merchant Tools → Site Preferences → Custom Preferences → Topsort | `topsortBannersEnabled = true` | [6](#6-banners) |
@@ -1386,7 +1497,7 @@ Merchant Tools → Site Preferences → Custom Preferences → **Topsort**:
 | `topsortTrackingEnabled` | `true` |
 | `topsortAuctionTrafficPercent` | `1` to start. Raise it while watching storefront response times |
 | `topsortEnabled` | `true` — set this **last**, after the rest is verified |
-| `topsortBannersEnabled` | leave `false` until the seven slots exist in Topsort and the home content assets are in their slots — see [step 6](#6-banners) below |
+| `topsortBannersEnabled` | leave `false` until the slots exist in Topsort and the home content assets are in their slots — see [step 6](#6-banners) below |
 
 The project metadata and the cartridge reference metadata define the same Topsort preferences.
 
@@ -1418,7 +1529,7 @@ Banners need the following on top of listings, and `topsortBannersEnabled` shoul
 until all of it is done. The search and category placements are in the template overrides and
 need no merchandising; everything below the first item is for the three home slots.
 
-1. **Create the seven slots in Topsort** with a TSC management key — see
+1. **Create the slots in Topsort** with a TSC management key — see
    [Creating the slots in Topsort](#creating-the-slots-in-topsort). The `slotId` values must
    match `cartridge/scripts/config/topsort_banners.json` exactly.
 2. **Create the three home content assets.** Merchant Tools → Content → Libraries →
@@ -1599,6 +1710,22 @@ Placement and layout:
       auction for that slot, not by the network panel.
 - [ ] Every banner carries the **Patrocinado** label.
 
+Especiales and the in grid banner:
+
+- [ ] An `/especiales` page shows the top banner above the grid and **no footer banner**, and
+      still shows the side rail banner.
+- [ ] A page deeper in the Especiales tree behaves the same as the landing one: the top banner
+      runs there too, and its auction sends the category `especiales`, not the leaf.
+- [ ] A category page outside Especiales is unchanged: side and footer, no top banner.
+- [ ] The in grid banner sits in the **8th space** of the grid, the products after it keep
+      their order, and the grid shows one product fewer. Nothing is pushed down into a new row.
+- [ ] With no winner for that slot, the 8th product is there and the grid looks untouched.
+- [ ] Scrolling on (infinite scroll) brings no second in grid banner.
+- [ ] A category with fewer than 8 products renders no in grid banner.
+- [ ] A category set to the list view renders no in grid banner.
+- [ ] Check all three at `grid4` (a `grid4NoSidebar` category), at `lg`, and on a phone: the
+      banner stays in the 8th space as the column count changes.
+
 The empty case, which is the one that breaks layouts:
 
 - [ ] With `topsortBannersEnabled = false`, the home page and PLPs look exactly as they did
@@ -1666,13 +1793,13 @@ Logs: `SponsoredSearch` and `TopsortService` log categories in Business Manager.
 
 ### Banner formats not implemented
 
-[Sponsored banners](#sponsored-banners) covers the seven image slots that were asked for. Two
+[Sponsored banners](#sponsored-banners) covers the image slots that were asked for. Two
 neighbouring things are deliberately out:
 
-- **Top-of-page banners.** The upstream cartridge also has `search-top` and `category-top`.
-  They were specified out of the HITES placement list, so they are not in
-  `topsort_banners.json`. Adding one is a config entry plus an include in the listing
-  templates — no new code.
+- **Top-of-page banners on search and ordinary category pages.** The upstream cartridge also
+  has `search-top` and `category-top`. They were specified out of the HITES placement list, so
+  they are not in `topsort_banners.json`. Adding one is a config entry plus an include in the
+  listing templates — no new code, and the Especiales pages already render one that way.
 - **Sponsored brands.** A separate format (`POST /v2/auctions/sponsored-brand`), a creative
   plus a product carousel rather than a plain image. Nothing here supports it.
 

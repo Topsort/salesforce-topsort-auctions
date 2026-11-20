@@ -1,7 +1,7 @@
 <iscomment>
     Override of app_storefront_hites/search/searchResultsNoDecorator.isml.
 
-    Identical to the original apart from the two Topsort banner slots marked below. ISML has
+    Identical to the original apart from the Topsort banner slots marked below. ISML has
     no module.superModule, so the rest of this file is a copy and a later change to the HITES
     original has to be brought across by hand - the README lists this under the overrides that
     need a diff check.
@@ -11,10 +11,21 @@
     search term is the stronger statement of intent, so it picks both the slot and the auction
     trigger, exactly as topsortListings does for the products in the grid.
 </iscomment>
-<isset name="tsSearchQuery" value="${pdict.searchPhrase || ''}" scope="page" />
-<isset name="tsCategoryId" value="${(pdict.productSearch && pdict.productSearch.category) ? pdict.productSearch.category.id : ''}" scope="page" />
-<isset name="tsSideSlotId" value="${tsSearchQuery ? 'search-side' : 'category-side'}" scope="page" />
-<isset name="tsFooterSlotId" value="${tsSearchQuery ? 'search-bottom' : 'category-bottom'}" scope="page" />
+<isscript>
+    var tsPageSearchQuery = pdict.searchPhrase || '';
+    var tsPageCategoryId = (pdict.productSearch && pdict.productSearch.category) ? pdict.productSearch.category.id : '';
+    var tsSlots = require('*/cartridge/scripts/helpers/topsortBanners').getListingSlots({
+        categoryId: tsPageCategoryId,
+        searchQuery: tsPageSearchQuery
+    });
+</isscript>
+<isset name="tsSearchQuery" value="${tsPageSearchQuery}" scope="page" />
+<isset name="tsCategoryId" value="${tsPageCategoryId}" scope="page" />
+<isset name="tsSideSlotId" value="${tsSlots.side}" scope="page" />
+<isset name="tsTopSlotId" value="${tsSlots.top}" scope="page" />
+<isset name="tsFooterSlotId" value="${tsSlots.bottom}" scope="page" />
+<isset name="tsGridSlotId" value="${tsSlots.grid}" scope="page" />
+<isset name="tsGridSpace" value="${tsSlots.gridSpace}" scope="page" />
 <isif condition="${pdict.isBrandCategoryPage && !empty(pdict.brandsCategoryMetaTitle)}">
     <title>${pdict.brandsCategoryMetaTitle}</title>
 <iselse/>
@@ -100,6 +111,15 @@
                         </isif>
                     </div>
                     <div class="col-12 col-lg-9 product-grid pt-0" id="product-list">
+                        <iscomment>
+                            TOPSORT top banner. Only the Especiales pages carry one, so this
+                            is empty on every other listing page.
+                        </iscomment>
+                        <isif condition="${tsTopSlotId && pdict.productSearch.productIds.length > 0}">
+                            <isset name="tsSlotId" value="${tsTopSlotId}" scope="page" />
+                            <isset name="tsSlotClass" value="${''}" scope="page" />
+                            <isinclude template="topsort/bannerSlot" />
+                        </isif>
                         <isslot id="searchresults-secondary-banner" description="Content slot for banner (same width as product results)" context="global" />
 
                         <div class="grid-filters grid-filters-fixed new-grid-filters new-grid-filters-fixed d-none d-lg-none">
@@ -174,7 +194,7 @@
         TOPSORT footer banner. Outside the .container and outside the col-lg-9 grid column so
         it runs the full width of the viewport, which is what this placement was specified as.
     </iscomment>
-    <isif condition="${productsNotEmpty}">
+    <isif condition="${tsFooterSlotId && productsNotEmpty}">
         <div class="mt-8">
             <isset name="tsSlotId" value="${tsFooterSlotId}" scope="page" />
             <isset name="tsSlotClass" value="${''}" scope="page" />

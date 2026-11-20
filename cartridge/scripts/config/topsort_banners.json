@@ -54,5 +54,42 @@
         "position": 2,
         "devices": ["desktop", "mobile"],
         "sizes": "100vw"
+    },
+    {
+        "slotId": "especiales-top",
+        "page": "especiales",
+        "rootCategoryId": "Especiales",
+        "slots": 1,
+        "position": 2,
+        "devices": ["desktop", "mobile"],
+        "sizes": "(min-width: 1340px) 980px, (min-width: 1200px) calc(75vw - 30px), (min-width: 992px) 700px, calc(100vw - 30px)"
+    },
+    {
+        "slotId": "search-grid-8",
+        "page": "search",
+        "space": 8,
+        "slots": 1,
+        "position": 3,
+        "devices": ["desktop", "mobile"],
+        "sizes": "(min-width: 1340px) 330px, (min-width: 992px) 240px, 50vw"
+    },
+    {
+        "slotId": "category-grid-8",
+        "page": "category",
+        "space": 8,
+        "slots": 1,
+        "position": 3,
+        "devices": ["desktop", "mobile"],
+        "sizes": "(min-width: 1340px) 330px, (min-width: 992px) 240px, 50vw"
+    },
+    {
+        "slotId": "especiales-grid-8",
+        "page": "especiales",
+        "rootCategoryId": "Especiales",
+        "space": 8,
+        "slots": 1,
+        "position": 3,
+        "devices": ["desktop", "mobile"],
+        "sizes": "(min-width: 1340px) 330px, (min-width: 992px) 240px, 50vw"
     }
 ]
