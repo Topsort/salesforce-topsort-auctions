@@ -889,7 +889,8 @@ from before the refinement (**H4** in [Resolved review findings](#resolved-revie
 
 The cell has no fixed frame, unlike the other placements: it is as tall as the row it sits in,
 which depends on the product cards beside it. The creative is scaled to the cell and cropped
-to fit, so creatives for these slots have to be cut to the shape of a product tile.
+to fit, so these slots take a creative cut to the shape of a product tile, 660 × 990 on both
+devices — see [Creative dimensions](#creative-dimensions).
 
 ### Events
 
@@ -1155,11 +1156,50 @@ curl -X POST https://api.topsort.com/public/v1/media-service/slots \
 }'
 ```
 
-**The three in grid slots are not created yet.** `search-grid-8`, `category-grid-8` and
-`especiales-grid-8` are configured in the cartridge and render nothing until they exist in
-Topsort, which is the fail-open path: an unconfigured slot comes back with no winner and the
-product underneath stays visible. Their dimensions have to be agreed first, and they have to
-be the shape of a product tile — see [Creative dimensions](#creative-dimensions).
+**In grid** — the same tile shape on both devices, with `search-grid-8` on `position:
+"search"` and the other two on `position: "category"`:
+
+```bash
+curl -X POST https://api.topsort.com/public/v1/media-service/slots \
+  -H "Authorization: Bearer $TSC_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "slotId": "search-grid-8",
+  "position": "search",
+  "dimensions": {
+    "desktop": { "width": 660, "height": 990 },
+    "mobile":  { "width": 660, "height": 990 }
+  }
+}'
+```
+
+```bash
+curl -X POST https://api.topsort.com/public/v1/media-service/slots \
+  -H "Authorization: Bearer $TSC_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "slotId": "category-grid-8",
+  "position": "category",
+  "dimensions": {
+    "desktop": { "width": 660, "height": 990 },
+    "mobile":  { "width": 660, "height": 990 }
+  }
+}'
+```
+
+```bash
+curl -X POST https://api.topsort.com/public/v1/media-service/slots \
+  -H "Authorization: Bearer $TSC_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "slotId": "especiales-grid-8",
+  "position": "category",
+  "dimensions": {
+    "desktop": { "width": 660, "height": 990 },
+    "mobile":  { "width": 660, "height": 990 }
+  }
+}'
+```
 
 To check what exists already. Note this is a `POST` with a JSON body and **no `-G`** — an
 earlier revision of this file combined `-G` with `-X POST`, which moves the body into the
@@ -1188,7 +1228,7 @@ The rendered width comes from the HITES grid: Bootstrap 4, `lg` at 992px, and
 | `search-side`, `category-side` | ~205px at `lg`, ~305px at `xl` | **610 × 800** desktop only | 3:4 vertical |
 | `search-bottom`, `category-bottom` | Full viewport | **2880 × 640** desktop, **1500 × 800** mobile | 4.5:1 / 1.9:1 |
 | `especiales-top` | Results column, up to 980px | **2000 × 300** desktop, **1320 × 352** mobile | 6.7:1 / 3.75:1 |
-| `search-grid-8`, `category-grid-8`, `especiales-grid-8` | One grid column: ~327px at `xl`, ~50vw on a phone | **To be agreed — has to be the shape of a product tile** | portrait, see below |
+| `search-grid-8`, `category-grid-8`, `especiales-grid-8` | One grid column: ~327px at `xl`, ~50vw on a phone | **660 × 990** desktop and mobile — agreed with HITES | 2:3 vertical, the shape of a product tile |
 
 Two things drive these:
 
@@ -1219,21 +1259,25 @@ HITES's 487px slides, which leaves a band of about 175px. HITES's shape at 2× (
 desktop, 1088 × 1360 mobile) was recommended on 2026-11-13 and not adopted: the slots are
 created at 2680 × 821 and 720 × 857, confirmed on 2026-11-20.
 
-**The in grid creatives have to be tile shaped, and the shape is not exact.** The banner
+**The in grid creatives are tile shaped, and no shape fits every row exactly.** The banner
 fills one grid column and is as tall as the row it sits in, and that height comes from the
 product cards beside it: a card is a square product image (served at 306 × 306) plus its
 price and label block, so the cell is portrait, roughly 2:3, but it moves with the content of
-the cards in that row. There is no ratio that fits every row, so the creative is scaled to
-the cell and cropped. What that means for whoever specifies these:
+the cards in that row. There is no ratio that fits all of them, so the creative is always
+scaled to the cell and cropped. The slots are **660 × 990** on both devices, 2:3 at 2× for
+high density screens, agreed with HITES on 2026-11-20. What that means for the creatives:
 
-- Aim for a portrait creative around **2:3** at 2× for high density screens, so roughly
-  660 × 990, and keep anything that has to be read away from the top and bottom edges, which
-  are what gets cropped.
+- Keep anything that has to be read away from the top and bottom edges, which are what gets
+  cropped on a taller row.
 - A landscape creative is the one case that goes badly wrong: cropped to a portrait cell it
   loses most of its width.
-- The slots cannot be created until these are agreed, because Topsort validates every
-  uploaded creative against the slot's dimensions and a slot's size cannot be edited
-  afterwards — see [Changing a slot's dimensions](#changing-a-slots-dimensions).
+- A phone crops a little more than a desktop. The two column mobile grid gives a cell closer
+  to 1:1.65 than to 1:1.5, because the price block takes a larger share of a narrower card.
+  One shape for both devices was chosen over a second mobile size so an advertiser can run
+  one creative; the extra crop is a few percent off the sides.
+- The sizes cannot be edited afterwards: Topsort validates every uploaded creative against
+  the slot's dimensions, and changing them means recreating the slot — see
+  [Changing a slot's dimensions](#changing-a-slots-dimensions).
 
 **Tablets** are classified as mobile by the user agent check (iPad, Android tablets), so they
 get the portrait creative while HITES shows its landscape 992 × 284 image there. Whether that
