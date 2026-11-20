@@ -36,7 +36,7 @@
             is skipped there.
         </iscomment>
         <isif condition="${listView}">
-            <isset name="tsGridSlotId" value="${null}" scope="page" />
+            <isset name="tsGridSlotId" value="${''}" scope="page" />
         </isif>
 
         <input type="hidden" id="hiddenSidebar" name="hideSidebar" value="${hideSidebar}"/>

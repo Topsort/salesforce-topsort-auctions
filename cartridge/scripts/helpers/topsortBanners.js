@@ -158,16 +158,19 @@ function isEspecialesCategory(categoryId) {
  * @param {Object} ctx - Page context
  * @param {string} [ctx.categoryId] - Raw SFCC category id, on category pages
  * @param {string} [ctx.searchQuery] - Shopper search term, on search pages
- * @returns {Object} Slot ids by placement, each null when the page has no such banner, plus
- *     the grid space the in-grid banner takes
+ * Placements the page does not have come back as an empty string rather than null, because
+ * the templates hand these straight to isset.
+ *
+ * @returns {Object} Slot ids by placement, empty where the page has no such banner, plus the
+ *     grid space the in grid banner takes
  */
 function getListingSlots(ctx) {
     var context = ctx || {};
     var slots = {
-        side: null,
-        top: null,
-        bottom: null,
-        grid: null,
+        side: "",
+        top: "",
+        bottom: "",
+        grid: "",
         gridSpace: 0
     };
 
@@ -191,7 +194,7 @@ function getListingSlots(ctx) {
     slots.gridSpace = gridSlot ? (gridSlot.space || 0) : 0;
 
     if (!slots.gridSpace) {
-        slots.grid = null;
+        slots.grid = "";
     }
 
     return slots;
